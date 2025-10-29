@@ -1,76 +1,77 @@
-# Current Work: MVP Implementation
+# Current Work: Hello World POC Complete! 🎉
 
-**Status**: Initial setup complete, ready for code implementation
+**Status**: ✅ Foundation working - tmux launcher successfully opens and saves
 
-**Branch**: `mvp` (code), `main` (docs)
+**Branch**: `mvp`
 
 ## This Week's Focus
 
-Build the minimal viable product with two launchers:
-1. **Emacs launcher** - Open multiple files at specific line numbers
-2. **Batcat launcher** - Display file previews with syntax highlighting
+Build interactive launcher system on top of working tmux foundation:
+1. **Menu system** - Let user choose batcat/emacs/vim/nano for each invocation
+2. **Config system** - Project-level and global configuration files
+3. **Context dispatching** - Read context files and auto-select launcher mode
 
-This proves the concept and establishes the plugin pattern for future launchers.
+The tmux foundation is proven - now we build the smart layer on top.
 
 ## What We've Done
 
 - ✅ Created project repository at `~/code/claude-editor-hook`
-- ✅ Initialized git
-- ✅ Set up Beads issue tracker with prefix `editor-hook`
+- ✅ Initialized git with Beads issue tracker (prefix: `editor-hook`)
 - ✅ Written memory bank foundation (projectbrief, systemPatterns)
+- ✅ **BREAKTHROUGH**: Working tmux launcher (unsets $TMUX for nesting)
+- ✅ Verified temp file editing: Ctrl-G → nano → edit → save → returns to Claude Code
+- ✅ Simplified script to 3 lines (bin/claude-editor-hook)
 
 ## What's Next
 
-**Immediate** (on `mvp` branch):
-1. Main wrapper script that reads context file and dispatches
-2. Config reader using `yq` for YAML parsing
-3. Emacs launcher that accepts files with line numbers
-4. Batcat launcher for quick previews
-5. Example context file template
-6. Test end-to-end: Claude writes context → Ctrl-G → launcher activates
+**Immediate** (P1 - on `mvp` branch):
+1. Interactive menu launcher (editor-hook-9) - fzf/select menu to choose viewer/editor
+2. Context file reading (editor-hook-3) - Parse `~/.claude/editor-context.yaml`
+3. Sequential flow design (editor-hook-4) - Show context, then edit prompt
 
-**Then**:
-1. Update `~/.bashrc` to use wrapper: `export EDITOR="claude-editor-hook"`
-2. Test in real Claude Code session
-3. Document usage in main README
+**Then** (P2):
+1. Configuration system (editor-hook-10) - `.claude/editor-hook.yaml` (project) + `~/.claude/editor-hook.yaml` (global)
+2. Hybrid tmux layouts (editor-hook-5) - Split panes: context viewer + prompt editor
+
+**Future** (P3):
+1. MCP tool (editor-hook-7) - Let Claude write context files during sessions
 
 ## Key Implementation Details
 
-**Main Wrapper** (`bin/claude-editor-hook`):
-- Check if `~/.claude/editor-context.yaml` exists
-- If yes: parse mode and dispatch to launcher
-- If no: fallback to `emacs -nw $@`
-- Pass context file path to launcher
+**Current Working Script** (`bin/claude-editor-hook`):
+```bash
+#!/usr/bin/env bash
+unset TMUX  # Allow nesting tmux sessions
+exec tmux new-session nano "$@"
+```
 
-**Config Reader** (`lib/config-reader.sh`):
-- Use `yq` to parse YAML (install with `pip install yq` or use `jq` for JSON)
-- Extract mode field
-- Validate structure
-- Export variables for launcher scripts
+**Why This Works**:
+- Unsets `$TMUX` to bypass tmux's nesting protection
+- Creates new tmux session running nano with the temp file
+- When user exits nano (Ctrl-X), tmux session ends
+- Control returns cleanly to Claude Code with saved changes
 
-**Emacs Launcher** (`lib/launcher-emacs.sh`):
-- Parse files array from context
-- Build emacs command: `emacs -nw +line1 file1 +line2 file2`
-- Support split-pane with multiple files
+**Next: Menu System** (editor-hook-9):
+- Add interactive menu before launching editor
+- Options: batcat (view), nano (edit), vim (edit), emacs (edit)
+- Use bash `select` (simple) or `fzf` (fancy) for menu
 
-**Batcat Launcher** (`lib/launcher-batcat.sh`):
-- Display each file in sequence with batcat
-- Highlight specific line numbers with `-H line:line` flag
-- Paginate through multiple files
+**Next: Context Reading** (editor-hook-3):
+- Check for `~/.claude/editor-context.yaml`
+- If exists: parse mode and auto-select launcher
+- If not: show menu or use default
 
 ## Testing Approach
 
-1. Create test context files in `test/fixtures/`
-2. Run wrapper directly: `./bin/claude-editor-hook`
-3. Verify each launcher works independently
-4. Integration test: Set `$EDITOR` and trigger from Claude Code
+✅ **Proven**: Ctrl-G → nano opens → edit → save → returns to Claude Code
+**Next**: Test with batcat viewer, vim, emacs
 
 ## Blockers
 
-None currently. All dependencies (emacs, batcat, yq) available.
+None! Foundation is solid.
 
 ## Notes
 
-- Keep it simple for MVP - no error handling overkill
-- Document as we go for future maintainers
-- Real win is when Claude starts writing context files during session
+- **Keep it stupid simple** - The 3-line script works perfectly
+- Don't overcomplicate unless there's a real need
+- Each new feature should be additive, not rewriting what works
