@@ -43,14 +43,29 @@ case "$PATTERN" in
         # Create menu data
         MENU="Edit with Emacs:emacs -nw \"$FILE\"
 Edit with Vi:vi \"$FILE\"
-Edit with Nano:nano \"$FILE\""
+Edit with Nano:nano \"$FILE\"
+Open in Claude:claude-spawn"
 
         # Show popup with fzf and execute selection
         exec tmux new-session bash -c "
             choice=\$(echo '$MENU' | fzf --height=10 --prompt='Command: ' --border --reverse)
             if [ -n \"\$choice\" ]; then
                 cmd=\$(echo \"\$choice\" | cut -d: -f2)
-                exec bash -c \"\$cmd\"
+                if [ \"\$cmd\" = \"claude-spawn\" ]; then
+                    # Special handling for Claude spawn - prompt enhancement workflow
+                    # The file contains a rough prompt from the user (e.g., 'Fix auth')
+                    # We spawn a new Claude instance to:
+                    # 1. Read the rough prompt
+                    # 2. Investigate relevant context (files, issues, patterns)
+                    # 3. Write back an enhanced, context-rich prompt
+                    # 4. When that Claude exits, the original Claude gets the enhanced prompt
+
+                    tmux new-window
+                    tmux send-keys \"cndsp 'You are a prompt enhancement agent. The file $FILE contains a rough prompt from a user working with Claude Code. Your job: 1) Read the prompt, 2) Investigate the codebase to find relevant context (files, Beads issues, patterns, recent commits), 3) Rewrite the prompt with specific file paths, line numbers, and actionable context, 4) Save the enhanced prompt back to $FILE. Make it detailed enough that the original Claude instance can act on it immediately without further investigation.'\" Enter
+                else
+                    # Regular editor command
+                    exec bash -c \"\$cmd\"
+                fi
             fi
         "
         ;;

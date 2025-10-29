@@ -122,6 +122,77 @@ claude-editor-hook/
 
 **Graceful Fallback**: If context file doesn't exist or is invalid, fall back to plain emacs
 
+## Prompt Enhancement Agent Pattern (Pattern 2 + "Open in Claude")
+
+**The Meta-Pattern**: Using Ctrl-G to spawn a parallel Claude instance that enhances your prompt.
+
+### How It Works
+
+1. **User writes rough prompt** in Claude Code (e.g., "Fix auth")
+2. **User hits Ctrl-G** → Pattern 2 menu appears
+3. **User selects "Open in Claude"** from fzf menu
+4. **New Claude instance spawns** with specialized prompt enhancement instructions
+5. **Enhancement agent investigates**:
+   - Reads the rough prompt from the temp file
+   - Searches codebase for relevant files
+   - Checks Beads issues for related tasks
+   - Reviews recent commits
+   - Identifies patterns and dependencies
+6. **Agent rewrites prompt** with:
+   - Specific file paths and line numbers
+   - Context from relevant code sections
+   - Links to related Beads issues
+   - Actionable implementation details
+7. **Agent saves enhanced prompt** back to the temp file and exits
+8. **Control returns to original Claude** with the enhanced prompt ready to execute
+
+### Example Flow
+
+**User's rough input:**
+```
+Fix auth
+```
+
+**After enhancement agent:**
+```markdown
+Fix authentication bug in website/src/middleware/auth.ts:42
+
+Context:
+- Issue: editor-hook-85 (Auth middleware failing on token refresh)
+- Related files:
+  - website/src/middleware/auth.ts:42 (token validation logic)
+  - website/src/lib/supabase.ts:108 (client initialization)
+- Recent commit 29a4906 touched auth flow
+- Pattern: Use supabase.auth.getSession() not getUser() for middleware
+
+Implementation:
+1. Update auth.ts:42 to use getSession() instead of getUser()
+2. Add null check for session.user
+3. Update error handling to return 401 with proper message
+```
+
+### Benefits
+
+- **Reduces cognitive load**: User types minimal prompt, gets fully contextualized task
+- **Better first-time execution**: Original Claude has all needed context upfront
+- **Investigative separation**: Enhancement work happens in separate context window
+- **Iterative refinement**: Can reopen in Claude multiple times to refine prompt
+
+### Implementation (Pattern 2)
+
+When user selects "Open in Claude" from the fzf menu:
+
+```bash
+tmux new-window
+tmux send-keys "cndsp 'You are a prompt enhancement agent. The file $FILE contains a rough prompt from a user working with Claude Code. Your job: 1) Read the prompt, 2) Investigate the codebase to find relevant context (files, Beads issues, patterns, recent commits), 3) Rewrite the prompt with specific file paths, line numbers, and actionable context, 4) Save the enhanced prompt back to $FILE. Make it detailed enough that the original Claude instance can act on it immediately without further investigation.'" Enter
+```
+
+### Related Issues
+
+- editor-hook-19: Prompt enhancement agent implementation
+- editor-hook-14: Use Claude CLI for dynamic menu options
+- editor-hook-16: Drawer-style popup with Claude CLI
+
 ## Future Enhancements
 
 **MCP Integration**: Create MCP tool for Claude to write context files directly (no file I/O)
