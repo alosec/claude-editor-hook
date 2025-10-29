@@ -4,7 +4,7 @@
 
 ## Current Status
 
-⚠️ **This is vibes-coded experimental software. The main functionality delivers, but expect rough edges.**
+⚠️ **This isvibe-coded experimental software. The main functionality delivers, but expect rough edges.**
 
 **✅ Working Now:**
 - FZF command palette menu with editor selection (emacs, vi, nano)
