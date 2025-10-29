@@ -47,21 +47,49 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 
 ## Installation
 
+### Quick Install
+
 ```bash
 # Clone the repo
 cd ~/code
 git clone [your-repo-url] claude-editor-hook
 cd claude-editor-hook
 
-# Symlink the wrapper to your PATH
-mkdir -p ~/.local/bin
-ln -s ~/code/claude-editor-hook/bin/claude-editor-hook ~/.local/bin/
+# Run the install script
+./install.sh install
 
 # Update your shell config (~/.bashrc or ~/.zshrc)
 export EDITOR="claude-editor-hook"
 
 # Reload your shell
 source ~/.bashrc
+```
+
+The install script:
+- Creates a symlink from `~/.local/bin/claude-editor-hook` to the project
+- Tracks installation metadata with git commit hash, branch, and date
+- Stores deployment info in `~/.local/bin/.claude-editor-hook-install.json`
+
+### Installation Management
+
+**Check installation details:**
+```bash
+./install.sh info
+```
+
+This shows which git commit, branch, and date you deployed. Perfect for knowing exactly what version is running.
+
+**Uninstall:**
+```bash
+./install.sh uninstall
+```
+
+### Manual Installation (without install script)
+
+```bash
+# Symlink directly
+mkdir -p ~/.local/bin
+ln -s ~/code/claude-editor-hook/bin/claude-editor-hook ~/.local/bin/
 ```
 
 ## Usage
