@@ -7,6 +7,9 @@
 editor-context.yaml
 editor-context.json
 
+# Beads database (but allow .beads/*.jsonl exports)
+.beads/*.db
+
 # Test fixtures
 test/tmp/
 

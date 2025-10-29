@@ -1,19 +1,41 @@
 # Claude Editor Hook
 
-> A context-aware editor launcher that lets Claude orchestrate what opens when you hit `Ctrl-G` in Claude Code.
+> A command palette for Claude Code that intercepts `Ctrl-G` to launch editors, tools, and specialized agents.
+
+## Current Status
+
+⚠️ **This is vibes-coded experimental software. The main functionality delivers, but expect rough edges.**
+
+**✅ Working Now:**
+- FZF command palette menu with editor selection (emacs, vi, nano)
+- Interactive prompt enhancement (spawns new Claude window for investigation)
+- Non-interactive prompt enhancement (auto-enhances with Claude + Haiku)
+- Installation system with git metadata tracking
+- Pattern-based configuration system
+
+**🚧 Experimental:**
+- 8 menu pattern implementations for research (Pattern 2 is the settled approach)
+- Installation script (works but not well tested)
+
+**📋 Planned:**
+- Enhanced history viewer - "Better Ctrl-O" that parses ~/.claude/projects for rich activity view (editor-hook-22)
+- Context file system for multi-file opening (editor-hook-3)
+- Multi-pane tmux layouts with logs (editor-hook-13)
+- MCP tool for Claude to write context files (editor-hook-7)
 
 ## What Is This?
 
-When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is in your `$EDITOR` environment variable. This project intercepts that hook, allowing Claude to dynamically control what you see:
+When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is in your `$EDITOR` environment variable. This project intercepts that hook to provide a command palette that can launch:
 
-- **Multiple files** at specific line numbers in emacs
-- **File previews** with syntax highlighting via batcat
-- **Interactive menus** with numbered options
-- **Tmux sessions** with editor, logs, and test panes
-- **Log streams** from servers or browsers
-- **Anything else** you can script
+- ✅ **Interactive menus** with FZF for choosing editors and tools
+- ✅ **Prompt enhancement agents** that investigate your codebase and rewrite prompts
+- ✅ **Any editor** (emacs, vi, nano) or viewer (batcat)
+- ✅ **Anything scriptable** - the menu accepts any command or script
+- 📋 **Multiple files** at specific line numbers (requires context file system - planned)
+- 📋 **Tmux layouts** with editor, logs, and test panes (planned)
+- 📋 **Log streams** from servers or browsers (planned)
 
-## How It Works
+## How It Works (Current Implementation)
 
 ```
 ┌───────────────────────────────────────────────┐
@@ -26,24 +48,47 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 └───────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────┐
-│  Wrapper reads ~/.claude/editor-context.yaml  │
-│  Claude wrote: mode=emacs, files=[...]        │
+│  FZF menu appears with options:               │
+│  • Edit with Emacs/Vi/Nano                    │
+│  • Enhance (Interactive) - spawn Claude       │
+│  • Enhance (Non-interactive) - auto-enhance   │
 └───────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────┐
-│  Launcher opens exactly what you need         │
+│  Selected tool launches in tmux session       │
 └───────────────────────────────────────────────┘
 ```
 
+**Extensibility:** New capabilities are added by inserting menu options in the FZF menu (Pattern 2 at lines 43-48 of `bin/claude-editor-hook`). Menu items can launch any script, CLI tool, or inline bash command.
+
 ## Example Use Cases
 
-**Code Review**: Claude identifies 5 files needing changes, opens them in split-pane emacs at the right line numbers.
+**✅ Prompt Enhancement (Working Now)**:
+- You write: `"Update ***README*** to clarify what's real vs aspirational"`
+- Hit Ctrl-G → Choose "Enhance (Non-interactive)"
+- Claude + Haiku investigates codebase, finds actual implementation status
+- Rewrites prompt with specific file paths, line numbers, and context
+- Returns to main Claude session with enhanced prompt
 
-**Debugging**: Claude detects an error, opens the file at the error line alongside relevant logs in batcat.
+**✅ Interactive Enhancement (Working Now)**:
+- Hit Ctrl-G → Choose "Enhance (Interactive)"
+- New Claude window opens for manual investigation
+- You review findings and approve before returning
 
-**Testing**: Claude triggers tests, opens tmux with code editor, test output, and server logs.
+**✅ Editor Selection (Working Now)**:
+- Hit Ctrl-G → FZF menu shows Emacs/Vi/Nano options
+- Select preferred editor for the prompt file
 
-**Exploration**: Claude presents a menu of 10 relevant files, you select which to view.
+**📋 Code Review (Planned)**:
+- Claude identifies 5 files needing changes
+- Writes context file with file paths and line numbers
+- Hit Ctrl-G → Opens split-pane emacs at right locations
+- *Requires: Context file system (issue editor-hook-3)*
+
+**📋 Debugging (Planned)**:
+- Claude detects an error
+- Hit Ctrl-G → Multi-pane tmux with code + logs
+- *Requires: Multi-pane layouts (issue editor-hook-13)*
 
 ## Installation
 
@@ -55,7 +100,7 @@ cd ~/code
 git clone [your-repo-url] claude-editor-hook
 cd claude-editor-hook
 
-# Run the install script
+# Run the install script (experimental)
 ./install.sh install
 
 # Update your shell config (~/.bashrc or ~/.zshrc)
@@ -65,10 +110,10 @@ export EDITOR="claude-editor-hook"
 source ~/.bashrc
 ```
 
-The install script:
-- Creates a symlink from `~/.local/bin/claude-editor-hook` to the project
-- Tracks installation metadata with git commit hash, branch, and date
-- Stores deployment info in `~/.local/bin/.claude-editor-hook-install.json`
+The install script attempts to:
+- Create a symlink from `~/.local/bin/claude-editor-hook` to the project
+- Track installation metadata with git commit hash, branch, and date
+- Store deployment info in `~/.local/bin/.claude-editor-hook-install.json`
 
 ### Installation Management
 
@@ -94,67 +139,104 @@ ln -s ~/code/claude-editor-hook/bin/claude-editor-hook ~/.local/bin/
 
 ## Usage
 
-### Manual Testing
+### Configuration
 
-Create a context file:
-
-```yaml
-# ~/.claude/editor-context.yaml
-mode: emacs
-files:
-  - path: /home/alex/code/myproject/src/main.js
-    line: 42
-    description: "Bug location"
-  - path: /home/alex/code/myproject/src/utils.js
-    line: 108
-    description: "Related function"
-```
-
-Then trigger it:
+**Pattern Selection:** Choose which menu pattern to use:
 
 ```bash
-# Simulates Ctrl-G in Claude Code
-claude-editor-hook /tmp/some-temp-file
+# Set pattern via environment variable (default: 1)
+export EDITOR_HOOK_PATTERN=2  # Use FZF menu (recommended)
+
+# Or create project-level config
+echo 'PATTERN=2' > .claude-editor-hook.conf
+
+# Or create global config
+echo 'PATTERN=2' > ~/.claude-editor-hook.conf
+```
+
+**Available Patterns:**
+- Pattern 1: Simple emacs exec
+- **Pattern 2: FZF menu (recommended)** - Command palette with extensible options
+- Patterns 3-8: Experimental menu approaches
+- Pattern 9: Non-interactive enhancement (auto-detects markers)
+
+### Manual Testing
+
+```bash
+# Test the menu
+claude-editor-hook /tmp/test-file
+
+# Test with a specific pattern
+EDITOR_HOOK_PATTERN=2 claude-editor-hook /tmp/test-file
 ```
 
 ### With Claude Code
 
-Once installed, Claude can write context files during your conversation:
+📋 **Context file system not yet implemented.** The workflow below describes planned functionality:
 
 ```
 You: "Show me where the authentication bug is"
 
 Claude: "I found the issue in auth.js line 42. Let me set up the view..."
-        [writes ~/.claude/editor-context.yaml]
+        [writes ~/.claude/editor-context.yaml]  # Not implemented yet
         "Now hit Ctrl-G to open the files"
 
 You: [hits Ctrl-G]
-     [emacs opens with auth.js:42 and related files]
+     [Currently: shows menu. Future: opens files from context]
 ```
+
+**Current workflow:** Hit Ctrl-G → Choose from menu → Edit prompt or enhance it
 
 ## Architecture
 
-See [memory-bank/01-architecture/systemPatterns.md](memory-bank/01-architecture/systemPatterns.md) for details.
+See [memory-bank/01-architecture/command-palette-paradigm.md](memory-bank/01-architecture/command-palette-paradigm.md) for the architectural vision.
 
-**Key components**:
-- `bin/claude-editor-hook` - Main wrapper script
-- `lib/config-reader.sh` - Parse YAML context files
-- `lib/launcher-*.sh` - Plugin launchers (emacs, batcat, menu, tmux)
-- `templates/context-schema.yaml` - Example context file
+**Current structure:**
+- `bin/claude-editor-hook` - Monolithic script with 8+ pattern implementations (276 lines)
+- Pattern 2 (lines 39-74) - FZF menu, the main extensibility point
+- `install.sh` - Installation script with git metadata tracking
 
-## Launchers
+**Planned structure** (not yet implemented):
+- `lib/config-reader.sh` - Parse YAML context files (📋 planned)
+- `lib/launcher-*.sh` - Plugin launchers (📋 planned)
+- `templates/context-schema.yaml` - Example context file (📋 planned)
 
-### Emacs Launcher
-Opens multiple files at specific line numbers, supports split panes.
+**Extensibility Model:**
+Pattern 2's FZF menu is the settled architecture. Add new capabilities by editing the `MENU` variable:
 
-### Batcat Launcher
-Displays file previews with syntax highlighting, highlights specific lines.
+```bash
+MENU="Display Text:command-to-execute
+Another Option:some-script.sh
+Third Option:inline bash code"
+```
 
-### Menu Launcher
-Interactive menu using fzf or dialog, user selects from options.
+Currently implemented menu options:
+- `Edit with Emacs:emacs -nw "$FILE"`
+- `Edit with Vi:vi "$FILE"`
+- `Edit with Nano:nano "$FILE"`
+- `Enhance (Interactive):claude-spawn-interactive` - Spawns new Claude window
+- `Enhance (Non-interactive):claude-enhance-auto` - Uses `claude -p` with Haiku
 
-### Tmux Launcher
-Orchestrates tmux sessions with editor, logs, tests in separate panes.
+**Future menu options could include:**
+- **Enhanced history viewer** - Parse `~/.claude/projects` to show last 10-20 files read/edited/created/deleted in recent calls (replaces Ctrl-O with rich, filterable view)
+- Git operations (`git log | fzf`)
+- Log streaming (`tail -f /var/log/app.log`)
+- Test runners (`npm test --watch`)
+- Database queries
+- API testing tools
+
+### The "Better Ctrl-O" Vision
+
+Ctrl-G as a leverage point to improve on Claude Code's limited Ctrl-O history:
+
+**Problem:** Ctrl-O shows cramped recent history, forces you to "tab out" of the session
+**Solution:** Menu option that analyzes `~/.claude/projects/<project>/calls/` to show:
+- Last 10-20 files touched (read, edited, created, deleted) in past X minutes
+- Raw message excerpts (truncated or expandable)
+- Optional Haiku summary of recent activity
+- Filterable, searchable interface (fzf, batcat, custom TUI)
+
+**Why this is powerful:** "Tab out" to rich history view while keeping the interactive session alive. Return when done exploring.
 
 ## Development
 
