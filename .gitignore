@@ -1,0 +1,22 @@
+# Temp files
+*.tmp
+*.swp
+*~
+
+# Context files (generated at runtime)
+editor-context.yaml
+editor-context.json
+
+# Test fixtures
+test/tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
