@@ -44,24 +44,28 @@ case "$PATTERN" in
         MENU="Edit with Emacs:emacs -nw \"$FILE\"
 Edit with Vi:vi \"$FILE\"
 Edit with Nano:nano \"$FILE\"
-Open in Claude:claude-spawn"
+Enhance (Interactive):claude-spawn-interactive
+Enhance (Non-interactive):claude-enhance-auto"
 
         # Show popup with fzf and execute selection
         exec tmux new-session bash -c "
             choice=\$(echo '$MENU' | fzf --height=10 --prompt='Command: ' --border --reverse)
             if [ -n \"\$choice\" ]; then
                 cmd=\$(echo \"\$choice\" | cut -d: -f2)
-                if [ \"\$cmd\" = \"claude-spawn\" ]; then
-                    # Special handling for Claude spawn - prompt enhancement workflow
-                    # The file contains a rough prompt from the user (e.g., 'Fix auth')
-                    # We spawn a new Claude instance to:
-                    # 1. Read the rough prompt
-                    # 2. Investigate relevant context (files, issues, patterns)
-                    # 3. Write back an enhanced, context-rich prompt
-                    # 4. When that Claude exits, the original Claude gets the enhanced prompt
+                if [ \"\$cmd\" = \"claude-spawn-interactive\" ]; then
+                    # Interactive enhancement - spawn new Claude window for investigation
+                    # User can review and approve the enhanced prompt before returning
 
                     tmux new-window
                     tmux send-keys \"cndsp 'You are a prompt enhancement agent. The file $FILE contains a rough prompt from a user working with Claude Code. Your job: 1) Read the prompt, 2) Investigate the codebase to find relevant context (files, Beads issues, patterns, recent commits), 3) Rewrite the prompt with specific file paths, line numbers, and actionable context, 4) Save the enhanced prompt back to $FILE. Make it detailed enough that the original Claude instance can act on it immediately without further investigation.'\" Enter
+                elif [ \"\$cmd\" = \"claude-enhance-auto\" ]; then
+                    # Non-interactive enhancement - auto-replace *** markers *** with context
+                    # Call claude -p with Haiku to read, investigate, and write back to file
+                    claude -p --verbose --dangerously-skip-permissions --model haiku \"Read the file $FILE. It contains a prompt with sections marked *** text *** or <<< text >>> that need investigation. For each marked section, use Read, Grep, Bash tools to investigate and gather context (file paths, line numbers, Beads issues, patterns). Replace the marked sections with your findings. Write the enhanced prompt back to $FILE. Output only 'Done' when complete.\"
+
+                    echo \"Press Enter to return to Claude Code...\"
+                    read
+                    # Return to Claude Code
                 else
                     # Regular editor command
                     exec bash -c \"\$cmd\"
@@ -222,6 +226,45 @@ EOF
             # Hold session open
             sleep infinity
         "
+        ;;
+
+    9)
+        # Pattern 9: Non-interactive prompt enhancement with claude -p + Haiku
+        echo "Pattern 9: Non-interactive prompt enhancement" >> "$LOG"
+
+        # Check if file has enhancement markers (*** or <<<>>>)
+        if grep -qE '\*\*\*.*\*\*\*|<<<.*>>>' "$FILE"; then
+            echo "Found enhancement markers, calling claude -p" >> "$LOG"
+
+            # Create temp file for enhanced output
+            ENHANCED=$(mktemp)
+
+            # Pass file content to claude -p with enhancement instructions
+            claude -p --model haiku "$(cat <<'PROMPT'
+You are enhancing a prompt for Claude Code. The user has marked sections with *** or <<< >>> that need investigation and expansion.
+
+Read the prompt below and look for sections marked with *** text *** or <<< text >>>.
+For each marked section, use Read, Grep, Bash tools to investigate and gather context.
+Replace marked sections with specific findings: file paths, line numbers, issue IDs, code patterns.
+
+Output ONLY the enhanced prompt with markers replaced. No explanations, no meta-commentary.
+
+Here is the prompt to enhance:
+PROMPT
+            )" "$(cat "$FILE")" > "$ENHANCED" 2>> "$LOG"
+
+            if [ $? -eq 0 ] && [ -s "$ENHANCED" ]; then
+                echo "Enhancement successful, updating file" >> "$LOG"
+                mv "$ENHANCED" "$FILE"
+            else
+                echo "Enhancement failed, keeping original" >> "$LOG"
+                rm -f "$ENHANCED"
+            fi
+        else
+            echo "No enhancement markers found, skipping enhancement" >> "$LOG"
+        fi
+
+        # Don't open editor - return directly to Claude Code
         ;;
 
     *)
