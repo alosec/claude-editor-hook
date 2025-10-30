@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# Shared menu logic for both claude-editor-hook and claude-editor-menu
+# This ensures menu options and behavior stay in sync
+
+# Usage: show_menu <file-path>
+show_menu() {
+    local FILE="$1"
+
+    # Get script directory for finding helper scripts
+    local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    # Menu definition - single source of truth
+    local MENU="Edit with Emacs:emacs -nw \"$FILE\"
+Edit with Vi:vi \"$FILE\"
+Edit with Nano:nano \"$FILE\"
+Open Terminal:open-terminal
+Recent Files:recent-files
+Detach:detach
+Enhance (Interactive):claude-spawn-interactive
+Enhance (Non-interactive):claude-enhance-auto"
+
+    # Show FZF menu
+    local choice=$(echo "$MENU" | fzf --height=100% --prompt='Command: ' --border --reverse)
+
+    if [ -z "$choice" ]; then
+        # User cancelled
+        return 0
+    fi
+
+    # Extract command from selection
+    local cmd=$(echo "$choice" | cut -d: -f2)
+
+    # Execute command
+    case "$cmd" in
+        open-terminal)
+            # Open terminal - set PROMPT env var and drop into bash
+            export PROMPT="$FILE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Claude Editor Workspace"
+            echo "Type 'menu' to open command palette"
+            echo "Access prompt file: \$PROMPT"
+            echo "File: $PROMPT"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            # Set up menu alias and launch bash with it available
+            exec bash --rcfile <(cat ~/.bashrc 2>/dev/null; echo 'alias menu="claude-editor-menu"')
+            ;;
+
+        recent-files)
+            # Recent Files - query JSONL logs directly with caching
+            local QUERY_SCRIPT="$SCRIPT_DIR/scripts/query-recent-files-jsonl.sh"
+
+            # Query recent files and show in FZF
+            local selected_file=$(bash "$QUERY_SCRIPT" 2>/tmp/recent-files-error.$$ | fzf --height=100% --prompt='Recent Files (JSONL): ' --border --reverse --preview='batcat --color=always --style=numbers {}' --preview-window=up:70%:wrap)
+
+            # Check for errors
+            if [ -s /tmp/recent-files-error.$$ ]; then
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                cat /tmp/recent-files-error.$$
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                read -p "Press Enter to continue..."
+            elif [ -n "$selected_file" ]; then
+                # File selected - check if it exists
+                if [ -f "$selected_file" ]; then
+                    # File exists - open with emacs
+                    emacs -nw "$selected_file"
+                elif [ -d "$(dirname "$selected_file")" ]; then
+                    # File doesn't exist but directory does - cd to directory
+                    echo "File not found: $selected_file"
+                    echo "Directory exists. Opening parent directory..."
+                    read -p "Press Enter to continue..."
+                else
+                    # Neither file nor directory exists
+                    echo "File not found: $selected_file"
+                    read -p "Press Enter to continue..."
+                fi
+            fi
+            rm -f /tmp/recent-files-error.$$
+            ;;
+
+        detach)
+            # Just exit cleanly - returns to Claude Code
+            exit 0
+            ;;
+
+        claude-spawn-interactive)
+            # Interactive subagent - spawn new Claude window with context package
+            # Subagent reads context files and writes enhanced output back to prompt file
+
+            # Create subagent context package
+            local CONTEXT_DIR="/tmp/claude-subagent-$$"
+            bash "$SCRIPT_DIR/scripts/create-subagent-context.sh" "$FILE" "$CONTEXT_DIR"
+
+            # Spawn subagent with context in new tmux window
+            tmux new-window bash -c "
+              export CONTEXT_DIR='$CONTEXT_DIR'
+              cd '$PWD'
+              exec claude \\
+                --dangerously-skip-permissions \\
+                --append-system-prompt \"\$(cat '$CONTEXT_DIR/system-prompt.txt')\"
+            "
+            ;;
+
+        claude-enhance-auto)
+            # Non-interactive enhancement - auto-replace *** markers *** with context
+            # Call claude -p with Haiku to read, investigate, and write back to file
+            claude -p --verbose --dangerously-skip-permissions --model haiku "Read the file $FILE. It contains a prompt with sections marked *** text *** or <<< text >>> that need investigation. For each marked section, use Read, Grep, Bash tools to investigate and gather context (file paths, line numbers, Beads issues, patterns). Replace the marked sections with your findings. Write the enhanced prompt back to $FILE. Output only 'Done' when complete."
+
+            echo "Press Enter to return to Claude Code..."
+            read
+            ;;
+
+        *)
+            # Regular editor command - run without exec so tmux keybindings work
+            bash -c "$cmd"
+            ;;
+    esac
+}
+
+# Export function so it can be called from sourcing scripts
+export -f show_menu
