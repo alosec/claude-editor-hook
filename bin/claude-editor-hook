@@ -37,12 +37,15 @@ case "$PATTERN" in
         ;;
 
     2)
-        # Pattern 2: display-popup + fzf (Interactive Picker)
-        echo "Pattern 2: fzf popup menu" >> "$LOG"
+        # Pattern 2: display-popup + fzf (Interactive Picker) with session persistence
+        echo "Pattern 2: fzf popup menu with persistent session" >> "$LOG"
 
         # Get the directory where this script lives (for finding lib/nested-tmux.conf)
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
         NESTED_CONF="$SCRIPT_DIR/../lib/nested-tmux.conf"
+
+        # Session name - always use "Claude" for simplicity
+        SESSION_NAME="Claude"
 
         # Create menu data
         MENU="Edit with Emacs:emacs -nw \"$FILE\"
@@ -53,9 +56,8 @@ Detach:detach
 Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto"
 
-        # Show popup with fzf and execute selection
-        # Use -f flag to load nested config (backtick prefix + command palette binding)
-        exec tmux -f "$NESTED_CONF" new-session bash -c "
+        # Menu command (reused for both new session and respawn)
+        MENU_CMD="
             choice=\$(echo '$MENU' | fzf --height=10 --prompt='Command: ' --border --reverse)
             if [ -n \"\$choice\" ]; then
                 cmd=\$(echo \"\$choice\" | cut -d: -f2)
@@ -95,6 +97,27 @@ Enhance (Non-interactive):claude-enhance-auto"
                 fi
             fi
         "
+
+        # Check if session exists
+        if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+            echo "Session '$SESSION_NAME' exists, reattaching" >> "$LOG"
+
+            # Update PROMPT environment variable for the session
+            tmux set-environment -t "$SESSION_NAME" PROMPT "$FILE"
+
+            # Respawn window 1 with fresh menu (preserves other windows)
+            # Use select-window first to ensure window 1 exists, create if not
+            tmux select-window -t "$SESSION_NAME:1" 2>/dev/null || tmux new-window -t "$SESSION_NAME:1"
+            tmux respawn-window -t "$SESSION_NAME:1" -k bash -c "$MENU_CMD"
+
+            # Attach to the session
+            exec tmux -f "$NESTED_CONF" attach -t "$SESSION_NAME"
+        else
+            echo "Session '$SESSION_NAME' doesn't exist, creating" >> "$LOG"
+
+            # Create new session with menu
+            exec tmux -f "$NESTED_CONF" new-session -s "$SESSION_NAME" bash -c "$MENU_CMD"
+        fi
         ;;
 
     3)
