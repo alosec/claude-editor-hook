@@ -15,8 +15,8 @@ Edit with Nano:nano \"$FILE\"
 Open Terminal:open-terminal
 Detach:detach"
 
-# Show FZF menu
-choice=$(echo "$MENU" | fzf --height=10 --prompt='Command: ' --border --reverse)
+# Show FZF menu (use 70% of terminal height)
+choice=$(echo "$MENU" | fzf --height=70% --prompt='Command: ' --border --reverse)
 
 if [ -n "$choice" ]; then
     cmd=$(echo "$choice" | cut -d: -f2)
