@@ -54,11 +54,9 @@ case "$PATTERN" in
         # Session name - always use "Claude" for simplicity
         SESSION_NAME="Claude"
 
-        # Source shared menu core
-        source "$SCRIPT_DIR/../lib/menu-core.sh"
-
         # Menu command (reused for both new session and respawn)
-        MENU_CMD="show_menu '$FILE'"
+        # Must source menu-core.sh inside the bash -c context
+        MENU_CMD="source '$SCRIPT_DIR/../lib/menu-core.sh' && show_menu '$FILE'"
 
         # Check if session exists
         if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
