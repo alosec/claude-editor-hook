@@ -10,7 +10,7 @@
 - FZF command palette with 8 options
 - Edit with Emacs/Vi/Nano (returns to Claude Code when done)
 - **Open Terminal** (full shell with `$PROMPT` env var set to temp file path)
-- **Recent Files** - Query mem-sqlite for last 25 files Claude touched
+- **Recent Files** - Query JSONL logs for last 25 files Claude touched (with intelligent caching)
 - Interactive + non-interactive prompt enhancement
 - Configurable via `~/.claude-editor-hook.conf` (set `PATTERN=2`)
 
@@ -60,17 +60,24 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 **Key Features:**
 - **Simple FZF menu** - Fuzzy searchable command palette
 - **Open Terminal** - Full bash shell with `$PROMPT` env var pointing to temp file
-- **Recent Files** - Access last 25 files Claude touched via mem-sqlite query (requires daemon)
+- **Recent Files** - Access last 25 files Claude touched via JSONL parsing (no dependencies)
 - **Prompt enhancement** - Interactive or auto modes for Claude to investigate and enhance prompts
 - **Clean and minimal** - Just works, no complexity
 
-**Recent Files Setup:**
-The Recent Files feature requires [mem-sqlite](https://github.com/alosec/mem-sqlite) to be running as a daemon:
-```bash
-cd ~/code/mem-sqlite
-npm run cli start  # Keep this running in background
-```
-This watches Claude Code's JSONL logs and maintains a real-time SQLite database.
+**Recent Files Details:**
+The Recent Files feature reads Claude Code's JSONL session logs directly from `~/.claude/projects/`. No external dependencies or daemons required.
+
+**Performance:**
+- First run: ~1s (parses last 5000 lines from each JSONL file)
+- Subsequent runs: <100ms (uses cached results until JSONL files change)
+- Cache location: `lib/cache/recent-files-*.json`
+
+**How it works:**
+1. Detects current project directory → maps to `~/.claude/projects/-project-name/`
+2. Finds all JSONL files, sorted by modification time
+3. Parses Read/Edit/Write tool invocations with `jq`
+4. Groups by file path, keeps most recent timestamp
+5. Returns top 25 files, most recent first
 
 ## Example Use Cases
 

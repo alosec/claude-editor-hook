@@ -83,37 +83,35 @@ Enhance (Non-interactive):claude-enhance-auto"
                     # Source user's bashrc first, then add menu alias
                     exec bash --rcfile <(cat ~/.bashrc 2>/dev/null; echo 'alias menu=\"claude-editor-menu\"')
                 elif [ \"\$cmd\" = \"recent-files\" ]; then
-                    # Recent Files - query mem-sqlite and show FZF picker
-                    QUERY_SCRIPT=\"$SCRIPT_DIR/../lib/scripts/query-recent-files.sh\"
+                    # Recent Files - query JSONL logs directly with caching
+                    QUERY_SCRIPT=\"$SCRIPT_DIR/../lib/scripts/query-recent-files-jsonl.sh\"
 
-                    # Check if database exists
-                    if [ ! -f \"\$HOME/.local/share/memory-sqlite/claude_code.db\" ]; then
+                    # Query recent files and show in FZF
+                    selected_file=\$(bash \"\$QUERY_SCRIPT\" 2>/tmp/recent-files-error.$$ | fzf --height=100% --prompt='Recent Files (JSONL): ' --border --reverse --preview='batcat --color=always --style=numbers {}' --preview-window=up:70%:wrap)
+
+                    # Check for errors
+                    if [ -s /tmp/recent-files-error.$$ ]; then
                         echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
-                        echo \"mem-sqlite database not found\"
-                        echo \"Run: cd ~/code/mem-sqlite && npm run cli sync\"
+                        cat /tmp/recent-files-error.$$
                         echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
                         read -p \"Press Enter to continue...\"
-                    else
-                        # Query recent files and show in FZF
-                        selected_file=\$(bash \"\$QUERY_SCRIPT\" | fzf --height=100% --prompt='Recent Files: ' --border --reverse --preview='batcat --color=always --style=numbers {}' --preview-window=up:70%:wrap)
-
-                        if [ -n \"\$selected_file\" ]; then
-                            # File selected - check if it exists
-                            if [ -f \"\$selected_file\" ]; then
-                                # File exists - open with emacs
-                                emacs -nw \"\$selected_file\"
-                            elif [ -d \"\$(dirname \"\$selected_file\")\" ]; then
-                                # File doesn't exist but directory does - cd to directory
-                                echo \"File not found: \$selected_file\"
-                                echo \"Directory exists. Opening parent directory...\"
-                                read -p \"Press Enter to continue...\"
-                            else
-                                # Neither file nor directory exists
-                                echo \"File not found: \$selected_file\"
-                                read -p \"Press Enter to continue...\"
-                            fi
+                    elif [ -n \"\$selected_file\" ]; then
+                        # File selected - check if it exists
+                        if [ -f \"\$selected_file\" ]; then
+                            # File exists - open with emacs
+                            emacs -nw \"\$selected_file\"
+                        elif [ -d \"\$(dirname \"\$selected_file\")\" ]; then
+                            # File doesn't exist but directory does - cd to directory
+                            echo \"File not found: \$selected_file\"
+                            echo \"Directory exists. Opening parent directory...\"
+                            read -p \"Press Enter to continue...\"
+                        else
+                            # Neither file nor directory exists
+                            echo \"File not found: \$selected_file\"
+                            read -p \"Press Enter to continue...\"
                         fi
                     fi
+                    rm -f /tmp/recent-files-error.$$
                 elif [ \"\$cmd\" = \"detach\" ]; then
                     # Just exit cleanly - returns to Claude Code
                     exit 0
