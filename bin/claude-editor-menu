@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Helper script to show FZF menu from within tmux sessions
+# Called by:
+# 1. User typing 'menu' in terminal (alias set in Open Terminal option)
+# 2. Tmux keybinding (Ctrl-` from lib/nested-tmux.conf)
+
+# Get the file path from environment variable set by "Open Terminal"
+FILE="${PROMPT:-}"
+
+if [ -z "$FILE" ]; then
+    echo "Error: No prompt file found. This command should be run from within a Claude editor session."
+    echo "Hint: Use Ctrl-G in Claude Code, then choose 'Open Terminal' to access this menu."
+    exit 1
+fi
+
+# Get the directory where this script lives (to find lib/menu-core.sh)
+# Follow symlinks to get the actual script location
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
+while [ -L "$SCRIPT_SOURCE" ]; do
+    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+
+# Source shared menu core
+MENU_CORE="$SCRIPT_DIR/../lib/menu-core.sh"
+if [ ! -f "$MENU_CORE" ]; then
+    echo "Error: Cannot find lib/menu-core.sh at $MENU_CORE"
+    exit 1
+fi
+source "$MENU_CORE"
+
+# Open menu in new tmux window within existing session
+# When the window closes, it automatically returns to the calling window
+tmux new-window "source '$MENU_CORE' && show_menu '$FILE'"
