@@ -90,19 +90,22 @@ fi
     sort_by(.timestamp) | reverse |
     # Limit to 25
     .[0:25]
-' | jq -r '.[] | .file_path' > /tmp/recent-files-output-$$
+' > /tmp/recent-files-with-timestamps-$$
 
-# Build and save cache
+# Extract just file paths for output
+jq -r '.[] | .file_path' /tmp/recent-files-with-timestamps-$$ > /tmp/recent-files-output-$$
+
+# Build and save cache with timestamps
 jq -n \
     --arg project "$PWD" \
     --argjson mtime "$LATEST_MTIME" \
     --arg cached_at "$(date -Iseconds)" \
-    --argjson files "$(cat /tmp/recent-files-output-$$ | jq -R . | jq -s 'map({path: ., timestamp: ""})')" \
+    --argjson files "$(cat /tmp/recent-files-with-timestamps-$$ | jq 'map({path: .file_path, timestamp: .timestamp})')" \
     '{project_dir: $project, last_jsonl_mtime: $mtime, cached_at: $cached_at, files: $files}' \
     > "$CACHE_FILE"
 
 # Output results
 cat /tmp/recent-files-output-$$
-rm -f /tmp/recent-files-output-$$
+rm -f /tmp/recent-files-output-$$ /tmp/recent-files-with-timestamps-$$
 
 exit 0
