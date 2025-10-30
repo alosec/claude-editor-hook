@@ -35,9 +35,8 @@ The command palette paradigm is fully functional! Type `menu` from within the wo
 ## What's Next
 
 **Immediate** (P1):
-1. **editor-hook-2** - Implement persistent tmux sessions (connect to existing or create if not exists) - TOP PRIORITY
-2. **editor-hook-1** - Fix Ctrl+backtick keybinding in nested session (or find better alternative)
-3. **editor-hook-3** - Fix session numbering (avoid incrementing on each Ctrl-G)
+1. **editor-hook-2** - Implement simple persistent "Claude" session (NEW APPROACH - TOP PRIORITY)
+2. **editor-hook-3** - Fix session numbering (will be resolved by persistence)
 
 **Then** (P2):
 1. **editor-hook-4** - Generalize Claude prompt enhancement pattern
@@ -75,19 +74,25 @@ exec tmux -f "$NESTED_CONF" new-session bash -c "
 - `~/.local/bin/claude-editor-menu` - FZF menu helper (context-aware)
 - `~/.claude-editor-hook.conf` - Pattern selection (PATTERN=2)
 
-## Current Issues
+## Recently Completed
 
-**editor-hook-1**: Ctrl+backtick keybinding doesn't work in nested session ✅ SOLVED
-- Attempted: prefix keys, -n flag, -T prefix table (all failed)
-- **Solution**: `menu` alias set up automatically in Open Terminal mode
-- User types `menu` → reopens command palette inline
+**editor-hook-1**: Menu accessibility ✅ SOLVED (commit 16c5fe4)
+- Implemented `menu` alias in Open Terminal mode
+- Sources user's bashrc + adds alias automatically
 - Simpler and more discoverable than keybinding
+- Closed: Menu access now fully functional
 
-**editor-hook-2**: Create new session every time vs persistent (TOP PRIORITY)
+## Current Issues & Blockers
+
+**editor-hook-2**: Implement simple persistent "Claude" session (P1 - READY TO IMPLEMENT)
 - Currently creates new session on each Ctrl-G
-- Should check if session exists and reattach vs create new
-- Pattern 3 has example implementation
-- **CAUTION**: Session name must not leak to main tmux (use unique prefix like `_claude_editor_$$`)
+- **New simple approach**:
+  - Always use session named "Claude"
+  - If exists → attach
+  - If not → create and attach
+  - User can detach and reattach freely
+- **Keep menu alias** (don't remove like experimental branch did)
+- No complex project hashing - just one simple session name
 
 ## Notes
 

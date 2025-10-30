@@ -1,36 +1,44 @@
 # Next Up: Prioritized Tasks
 
+**Updated**: 2025-10-30
+
 ## Top 10 Tasks
 
-### 1. Complete MVP Implementation (Priority 0)
-Build emacs and batcat launchers to prove the concept works end-to-end.
+### 1. Implement simple persistent "Claude" session (Priority 1) - editor-hook-2
+**NEW SIMPLE APPROACH**:
+- Always use session named "Claude"
+- Check if exists → attach, else create → attach
+- Keep menu alias functionality
+- No project-based hashing complexity
 
-### 2. Menu Launcher (Priority 1)
-Interactive menu using `fzf` or `dialog` that presents numbered options. Claude can define the menu structure in context file.
+### 3. Fix session numbering (Priority 2) - editor-hook-3
+**Will be resolved by #2**: Currently sessions increment on each Ctrl-G. Persistence will solve this.
 
-### 3. Tmux Launcher (Priority 1)
-Orchestrate tmux sessions with multiple panes: editor, logs, tests, etc. Most powerful for complex debugging scenarios.
+### 4. Generalize Claude prompt enhancement pattern (Priority 2) - editor-hook-4
+Create reusable pattern for spawning enhancement agents. Interactive and non-interactive modes both working, need to document pattern for future extensions.
 
-### 4. Log Streaming Integration (Priority 2)
-Add ability to tail server logs, browser console, or any command output directly in the launcher.
+### 5. Context file reading (Priority 2)
+Parse `~/.claude/editor-context.yaml` to open multiple files at specific line numbers. Foundation for multi-file workflows.
 
-### 5. MCP Tool for Context Writing (Priority 2)
+### 6. MCP Tool for Context Writing (Priority 2)
 Create an MCP server that gives Claude a tool to write context files directly (no file I/O). Makes Claude's job easier and faster.
 
-### 6. Smart Fallback Mode (Priority 2)
+### 7. Smart Fallback Mode (Priority 2)
 When no context file exists, inspect `git diff` and automatically open changed files. Useful default behavior.
 
-### 7. Git Diff Launcher (Priority 3)
+### 8. Log Streaming Integration (Priority 3)
+Add ability to tail server logs, browser console, or any command output directly in the launcher.
+
+### 9. Git Diff Launcher (Priority 3)
 Show diffs side-by-side in ediff or similar. Claude can specify which commits/branches to compare.
 
-### 8. Browser DevTools Integration (Priority 3)
+### 10. Browser DevTools Integration (Priority 3)
 Capture and display browser console logs, network requests, or DOM state. Requires browser extension or CDP integration.
 
-### 9. Session History & Replay (Priority 3)
-Track all context files written during a day/week, allow user to replay previous views. Useful for "what was I looking at earlier?"
+## Additional Tasks (Lower Priority)
 
-### 10. Per-Project Context Files (Priority 4)
-Support `.claude/editor-context.yaml` in project directories, not just global `~/.claude/`. Allows per-project customization.
+- **Session History & Replay** (P3): Track context files over time, allow replay
+- **Per-Project Context Files** (P4): Support `.claude/editor-context.yaml` in project roots
 
 ## Future Ideas (Not Prioritized)
 
