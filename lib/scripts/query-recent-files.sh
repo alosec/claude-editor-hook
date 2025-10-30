@@ -17,12 +17,14 @@ fi
 PROJECT_FILTER="${1:-}"
 
 # Build SQL query
+# Use messages.timestamp (actual tool use time) instead of tool_uses.created (db insert time)
 if [ -n "$PROJECT_FILTER" ]; then
     QUERY="
     SELECT DISTINCT
       json_extract(tu.parameters, '\$.file_path') AS file_path,
-      MAX(tu.created) AS last_touched
+      MAX(m.timestamp) AS last_touched
     FROM tool_uses tu
+    JOIN messages m ON tu.messageId = m.id
     WHERE
       tu.toolName IN ('Read', 'Edit', 'Write')
       AND json_extract(tu.parameters, '\$.file_path') IS NOT NULL
@@ -36,8 +38,9 @@ else
     QUERY="
     SELECT DISTINCT
       json_extract(tu.parameters, '\$.file_path') AS file_path,
-      MAX(tu.created) AS last_touched
+      MAX(m.timestamp) AS last_touched
     FROM tool_uses tu
+    JOIN messages m ON tu.messageId = m.id
     WHERE
       tu.toolName IN ('Read', 'Edit', 'Write')
       AND json_extract(tu.parameters, '\$.file_path') IS NOT NULL
