@@ -60,9 +60,17 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 **Key Features:**
 - **Simple FZF menu** - Fuzzy searchable command palette
 - **Open Terminal** - Full bash shell with `$PROMPT` env var pointing to temp file
-- **Recent Files** - Access last 25 files Claude touched via mem-sqlite query
+- **Recent Files** - Access last 25 files Claude touched via mem-sqlite query (requires daemon)
 - **Prompt enhancement** - Interactive or auto modes for Claude to investigate and enhance prompts
 - **Clean and minimal** - Just works, no complexity
+
+**Recent Files Setup:**
+The Recent Files feature requires [mem-sqlite](https://github.com/alosec/mem-sqlite) to be running as a daemon:
+```bash
+cd ~/code/mem-sqlite
+npm run cli start  # Keep this running in background
+```
+This watches Claude Code's JSONL logs and maintains a real-time SQLite database.
 
 ## Example Use Cases
 
