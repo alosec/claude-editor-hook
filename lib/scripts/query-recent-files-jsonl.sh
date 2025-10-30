@@ -70,6 +70,8 @@ fi
     select(.type == "tool_use") |
     select(.name == "Read" or .name == "Edit" or .name == "Write") |
     select(.input.file_path != null) |
+    # Exclude temporary Claude prompt files
+    select(.input.file_path | test("/tmp/claude-prompt-.*\\.md$") | not) |
     {
         file_path: .input.file_path,
         timestamp: (.timestamp // "")
