@@ -1,102 +1,168 @@
-# Current Work: Command Palette Implementation (In Progress)
+# Current Work: mem-sqlite Recent Files Integration (Completed with Caveats)
 
-**Status**: 🔄 Pattern 2 working, command palette partially functional
+**Status**: ✅ Feature complete, ⚠️ Requires daemon setup
 
-**Branch**: `main`
+**Branch**: `feature/mem-sqlite-recent-files`
 
-## This Week's Focus
+## This Session's Work
 
-Implementing VS Code-style command palette for Claude Code's Ctrl-G hook:
-1. ✅ **FZF menu on Ctrl-G** - Working! Shows Edit/Terminal/Enhance options
-2. ✅ **Nested tmux session** - Pattern 2 creates isolated workspace with custom config
-3. ✅ **Welcome message** - Shows `menu` command hint and $PROMPT variable
-4. ✅ **Menu from within session** - Type `menu` to reopen command palette
-5. ❌ **Keybinding** - Ctrl+backtick not working (menu alias is better solution)
+**Completed: mem-sqlite Recent Files Integration (editor-hook-16)**
 
-The command palette paradigm is fully functional! Type `menu` from within the workspace to access all commands.
+Successfully integrated mem-sqlite database querying into the FZF command palette, adding a "Recent Files" option that shows the last 25 files Claude touched across all sessions.
 
-## What We've Done
+### What We Built
 
-**Foundation:**
-- ✅ Created project repository at `~/code/claude-editor-hook`
-- ✅ Initialized git with Beads issue tracker (prefix: `editor-hook`)
-- ✅ Written memory bank foundation (projectbrief, systemPatterns)
-- ✅ Working tmux launcher (unsets $TMUX for nesting)
+**Core Feature:**
+- New "Recent Files" menu option in Pattern 2 FZF palette
+- Queries mem-sqlite database for tool_uses (Read/Edit/Write operations)
+- FZF picker with full-height layout and batcat syntax-highlighted preview
+- Graceful error handling when database is missing
 
-**Pattern 2 - FZF Command Palette:**
-- ✅ FZF menu on Ctrl-G with options: Edit (Emacs/Vi/Nano), Open Terminal, Detach, Enhance
-- ✅ Nested tmux session with custom config (`lib/nested-tmux.conf`)
-- ✅ Welcome message showing `menu` command and $PROMPT variable
-- ✅ Fixed config leaking (session-local settings, no global pollution)
-- ✅ Helper script `~/.local/bin/claude-editor-menu` (context-aware menu)
-- ✅ Pattern 2 loads nested config with `tmux -f` flag
-- ✅ **`menu` alias** - Type `menu` from terminal to reopen command palette (clean solution)
+**Technical Implementation:**
+- SQL query using `json_extract()` to parse tool parameters
+- Bash wrapper script: `lib/scripts/query-recent-files.sh`
+- Symlink-aware path resolution (handles `~/.local/bin/claude-editor-hook` → actual location)
+- FZF layout: 100% height, preview on top (up:70%)
+
+**Files Created/Modified:**
+- `lib/scripts/query-recent-files.sh` (new) - SQL query wrapper
+- `bin/claude-editor-hook` (lines 44-51, 78-110) - Symlink resolution + Recent Files handler
+- `memory-bank/01-architecture/systemPatterns.md` - Architecture documentation
+- `README.md` - Feature documentation
+
+### Beads Issues Closed (8 total)
+
+- ✅ editor-hook-17 (P0): Setup mem-sqlite dependencies and run initial sync
+- ✅ editor-hook-18 (P1): Design and test SQL query for recent files
+- ✅ editor-hook-19 (P1): Create query wrapper script
+- ✅ editor-hook-20 (P1): Add Recent Files option to Pattern 2 FZF menu
+- ✅ editor-hook-21 (P2): File action submenu (deferred - direct open works well)
+- ✅ editor-hook-22 (P2): Error handling for missing database
+- ✅ editor-hook-23 (P2): Testing with real data
+- ✅ editor-hook-16 (P2): Parent issue
+
+**Average lead time**: 0.5 hours
+
+### Current Issue: Stale Database (editor-hook-25, P0)
+
+**Problem:**
+Recent Files shows files from psyt-finance-dash (worked on weeks ago) instead of current claude-editor-hook session files.
+
+**Root Cause:**
+The database is **correct but stale**. mem-sqlite was synced once at 7:19:31. At that moment, psyt-finance-dash files were genuinely the most recent. Current session started after sync, so its tool_uses aren't in the database yet.
+
+**Evidence:**
+```
+Database newest timestamp: 2025-10-30 07:19:31
+Current time: 2025-10-30 07:27:42 (8 minutes later)
+Current session tool_uses: NOT IN DATABASE
+```
+
+The query is working correctly - it's showing the most recent data available. The data is just outdated.
+
+**Solution:**
+This is a **deployment/setup issue**, not a code bug. mem-sqlite needs to run as a continuous daemon:
+
+```bash
+cd ~/code/mem-sqlite && npm run cli start
+```
+
+This keeps the database current with sub-second latency.
+
+**Scope:**
+Out of scope for current feature branch. Needs:
+1. Documentation in README about daemon requirement
+2. Possibly: systemd service or background startup script
+3. Possibly: Auto-sync fallback if daemon not running
+4. Possibly: Visual indicator of database staleness in menu
+
+See **editor-hook-25** for detailed analysis and solution options.
+
+## SQL Query Design (Working Correctly)
+
+```sql
+SELECT DISTINCT
+  json_extract(tu.parameters, '$.file_path') AS file_path,
+  MAX(tu.created) AS last_touched
+FROM tool_uses tu
+WHERE
+  tu.toolName IN ('Read', 'Edit', 'Write')
+  AND json_extract(tu.parameters, '$.file_path') IS NOT NULL
+  AND json_extract(tu.parameters, '$.file_path') != ''
+GROUP BY file_path
+ORDER BY last_touched DESC
+LIMIT 25;
+```
+
+**Query validates correctly:**
+- Extracts `file_path` from JSON `parameters` field using SQLite's `json_extract()`
+- Filters to file operation tools (Read/Edit/Write have `file_path` parameter)
+- Deduplicates with `DISTINCT` + `GROUP BY`
+- Orders by `MAX(created)` to get most recent touch per file
+- Limits to 25 for manageable FZF menu
+
+**Tested against real database with 48,501 tool uses - performs well.**
+
+## Architecture: Pattern 2 FZF Command Palette
+
+Pattern 2 now includes 8 menu options:
+1. Edit with Emacs
+2. Edit with Vi
+3. Edit with Nano
+4. Open Terminal (with `$PROMPT` env var)
+5. **Recent Files** (mem-sqlite query) ← NEW
+6. Detach (exit to Claude Code)
+7. Enhance (Interactive) - spawn parallel Claude instance
+8. Enhance (Non-interactive) - auto-enhancement with Haiku
+
+**Layout:** Full-height FZF (100%), clean and responsive.
 
 ## What's Next
 
-**Immediate** (P1):
-1. **editor-hook-2** - Implement simple persistent "Claude" session (NEW APPROACH - TOP PRIORITY)
-2. **editor-hook-3** - Fix session numbering (will be resolved by persistence)
+### Immediate (P0)
+1. **editor-hook-25**: Resolve stale database issue
+   - Document daemon requirement in README
+   - Consider auto-sync fallback
+   - Add staleness indicator?
 
-**Then** (P2):
-1. **editor-hook-4** - Generalize Claude prompt enhancement pattern
+### Then (P1)
+1. **editor-hook-15**: Explore template abstraction (minimal informational vs directive)
+2. **editor-hook-2**: Implement persistent "Claude" session (simple approach)
+
+### Future (P2)
+1. **editor-hook-24**: Documentation update (blocked by editor-hook-25)
 2. Context file reading - Parse `~/.claude/editor-context.yaml`
-3. Configuration system - `.claude/editor-hook.yaml` (project + global)
+3. MCP tool for context writing
 
-**Future** (P3):
-1. Hybrid tmux layouts - Split panes: context viewer + prompt editor
-2. MCP tool - Let Claude write context files during sessions
+## Key Learnings
 
-## Key Implementation Details
+**Symlink Resolution:**
+Using `BASH_SOURCE[0]` and iteratively following symlinks is critical when script is installed via symlink to `~/.local/bin/`.
 
-**Pattern 2 Architecture** (`bin/claude-editor-hook`):
-```bash
-# 1. Load nested tmux config with custom keybindings
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-NESTED_CONF="$SCRIPT_DIR/../lib/nested-tmux.conf"
+**FZF Preview Layouts:**
+- `--preview-window=right:60%` - Side-by-side (good for wide terminals)
+- `--preview-window=up:70%:wrap` - Stacked (better for narrow terminals, more vertical space)
 
-# 2. Show FZF menu and create nested session
-exec tmux -f "$NESTED_CONF" new-session bash -c "
-    # Show menu, execute selection
-    # Set $PROMPT for 'Open Terminal' mode
-"
-```
+**mem-sqlite Architecture:**
+- ETL pipeline: JSONL → SQLite transformation
+- Real-time sync requires daemon, not one-shot
+- Database size grows linearly with conversation history (310MB for moderate usage)
+- Query performance excellent even with 48K+ rows
 
-**Why Nested Sessions Work**:
-- Unsets `$TMUX` to bypass tmux's nesting protection
-- Creates isolated workspace with custom config (no pollution to main session)
-- `$PROMPT` env var preserves file path for menu access
-- When user exits (Detach), control returns cleanly to Claude Code
+**Orchestrated Subagent Workflow:**
+Planning agent → Granular Beads issues → Execution. Highly effective for well-defined features.
 
-**Key Files**:
-- `bin/claude-editor-hook` - Main entry point, dispatches to patterns
-- `lib/nested-tmux.conf` - Nested session config (Ctrl+backtick binding)
-- `~/.local/bin/claude-editor-menu` - FZF menu helper (context-aware)
-- `~/.claude-editor-hook.conf` - Pattern selection (PATTERN=2)
+## Session Stats
 
-## Recently Completed
+- Time: ~2 hours (planning + implementation + documentation)
+- Issues closed: 8
+- Files created: 1
+- Files modified: 4
+- Lines of SQL: 13
+- Lines of Bash: 64
+- Database size: 310MB
+- Tool uses analyzed: 48,501
 
-**editor-hook-1**: Menu accessibility ✅ SOLVED (commit 16c5fe4)
-- Implemented `menu` alias in Open Terminal mode
-- Sources user's bashrc + adds alias automatically
-- Simpler and more discoverable than keybinding
-- Closed: Menu access now fully functional
+---
 
-## Current Issues & Blockers
-
-**editor-hook-2**: Implement simple persistent "Claude" session (P1 - READY TO IMPLEMENT)
-- Currently creates new session on each Ctrl-G
-- **New simple approach**:
-  - Always use session named "Claude"
-  - If exists → attach
-  - If not → create and attach
-  - User can detach and reattach freely
-- **Keep menu alias** (don't remove like experimental branch did)
-- No complex project hashing - just one simple session name
-
-## Notes
-
-- Command palette paradigm is fully functional with `menu` alias!
-- Config leaking is fixed - no more brown status bars or wrong prefix keys
-- Keep nested session benefits: isolation, flexibility, tmux power
-- `menu` command is more discoverable than Ctrl+backtick (shown in welcome message)
+**Note:** Feature is functional and ready to merge pending resolution of editor-hook-25 (documentation of daemon requirement).

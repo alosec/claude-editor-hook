@@ -41,7 +41,14 @@ case "$PATTERN" in
         echo "Pattern 2: fzf popup menu with persistent session" >> "$LOG"
 
         # Get the directory where this script lives (for finding lib/nested-tmux.conf)
-        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        # Follow symlinks to get the actual script location
+        SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
+        while [ -L "$SCRIPT_SOURCE" ]; do
+            SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+            SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+            [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+        done
+        SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
         NESTED_CONF="$SCRIPT_DIR/../lib/nested-tmux.conf"
 
         # Session name - always use "Claude" for simplicity
@@ -52,13 +59,14 @@ case "$PATTERN" in
 Edit with Vi:vi \"$FILE\"
 Edit with Nano:nano \"$FILE\"
 Open Terminal:open-terminal
+Recent Files:recent-files
 Detach:detach
 Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto"
 
         # Menu command (reused for both new session and respawn)
         MENU_CMD="
-            choice=\$(echo '$MENU' | fzf --height=70% --prompt='Command: ' --border --reverse)
+            choice=\$(echo '$MENU' | fzf --height=100% --prompt='Command: ' --border --reverse)
             if [ -n \"\$choice\" ]; then
                 cmd=\$(echo \"\$choice\" | cut -d: -f2)
                 if [ \"\$cmd\" = \"open-terminal\" ]; then
@@ -74,6 +82,38 @@ Enhance (Non-interactive):claude-enhance-auto"
                     # Set up menu alias and launch bash with it available
                     # Source user's bashrc first, then add menu alias
                     exec bash --rcfile <(cat ~/.bashrc 2>/dev/null; echo 'alias menu=\"claude-editor-menu\"')
+                elif [ \"\$cmd\" = \"recent-files\" ]; then
+                    # Recent Files - query mem-sqlite and show FZF picker
+                    QUERY_SCRIPT=\"$SCRIPT_DIR/../lib/scripts/query-recent-files.sh\"
+
+                    # Check if database exists
+                    if [ ! -f \"\$HOME/.local/share/memory-sqlite/claude_code.db\" ]; then
+                        echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+                        echo \"mem-sqlite database not found\"
+                        echo \"Run: cd ~/code/mem-sqlite && npm run cli sync\"
+                        echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+                        read -p \"Press Enter to continue...\"
+                    else
+                        # Query recent files and show in FZF
+                        selected_file=\$(bash \"\$QUERY_SCRIPT\" | fzf --height=100% --prompt='Recent Files: ' --border --reverse --preview='batcat --color=always --style=numbers {}' --preview-window=up:70%:wrap)
+
+                        if [ -n \"\$selected_file\" ]; then
+                            # File selected - check if it exists
+                            if [ -f \"\$selected_file\" ]; then
+                                # File exists - open with emacs
+                                emacs -nw \"\$selected_file\"
+                            elif [ -d \"\$(dirname \"\$selected_file\")\" ]; then
+                                # File doesn't exist but directory does - cd to directory
+                                echo \"File not found: \$selected_file\"
+                                echo \"Directory exists. Opening parent directory...\"
+                                read -p \"Press Enter to continue...\"
+                            else
+                                # Neither file nor directory exists
+                                echo \"File not found: \$selected_file\"
+                                read -p \"Press Enter to continue...\"
+                            fi
+                        fi
+                    fi
                 elif [ \"\$cmd\" = \"detach\" ]; then
                     # Just exit cleanly - returns to Claude Code
                     exit 0
@@ -81,8 +121,12 @@ Enhance (Non-interactive):claude-enhance-auto"
                     # Interactive enhancement - spawn new Claude window for investigation
                     # User can review and approve the enhanced prompt before returning
 
+                    # Load prompt template and substitute file path
+                    PROMPT_TEMPLATE=\"$SCRIPT_DIR/../lib/prompts/enhancement-agent.txt\"
+                    PROMPT=\$(sed \"s|{{FILE}}|$FILE|g\" \"\$PROMPT_TEMPLATE\")
+
                     tmux new-window
-                    tmux send-keys \"cndsp 'You are a prompt enhancement agent. The file $FILE contains a rough prompt from a user working with Claude Code. Your job: 1) Read the prompt, 2) Investigate the codebase to find relevant context (files, Beads issues, patterns, recent commits), 3) Rewrite the prompt with specific file paths, line numbers, and actionable context, 4) Save the enhanced prompt back to $FILE. Make it detailed enough that the original Claude instance can act on it immediately without further investigation.'\" Enter
+                    tmux send-keys \"cndsp '\$PROMPT'\" Enter
                 elif [ \"\$cmd\" = \"claude-enhance-auto\" ]; then
                     # Non-interactive enhancement - auto-replace *** markers *** with context
                     # Call claude -p with Haiku to read, investigate, and write back to file

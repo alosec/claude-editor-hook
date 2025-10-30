@@ -7,9 +7,10 @@
 ✅ **Working and Simple** - Pattern 2 with FZF menu.
 
 **✅ Working Now:**
-- FZF command palette with 6 options
+- FZF command palette with 8 options
 - Edit with Emacs/Vi/Nano (returns to Claude Code when done)
 - **Open Terminal** (full shell with `$PROMPT` env var set to temp file path)
+- **Recent Files** - Query mem-sqlite for last 25 files Claude touched
 - Interactive + non-interactive prompt enhancement
 - Configurable via `~/.claude-editor-hook.conf` (set `PATTERN=2`)
 
@@ -44,6 +45,8 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 │  • Edit with Vi                               │
 │  • Edit with Nano                             │
 │  • Open Terminal ($PROMPT available)          │
+│  • Recent Files (last 25 files touched)      │
+│  • Detach                                     │
 │  • Enhance (Interactive)                      │
 │  • Enhance (Non-interactive)                  │
 └───────────────────────────────────────────────┘
@@ -57,6 +60,7 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 **Key Features:**
 - **Simple FZF menu** - Fuzzy searchable command palette
 - **Open Terminal** - Full bash shell with `$PROMPT` env var pointing to temp file
+- **Recent Files** - Access last 25 files Claude touched via mem-sqlite query
 - **Prompt enhancement** - Interactive or auto modes for Claude to investigate and enhance prompts
 - **Clean and minimal** - Just works, no complexity
 

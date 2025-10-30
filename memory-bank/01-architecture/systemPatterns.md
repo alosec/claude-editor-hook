@@ -122,29 +122,39 @@ claude-editor-hook/
 
 **Graceful Fallback**: If context file doesn't exist or is invalid, fall back to plain emacs
 
-## Prompt Enhancement Agent Pattern (Pattern 2 + "Open in Claude")
+## Parallel Instance Pattern (Ctrl+G Hijacking)
 
-**The Meta-Pattern**: Using Ctrl-G to spawn a parallel Claude instance that enhances your prompt.
+**The Meta-Pattern**: Hijacking Claude Code's Ctrl+G editor hook to spawn parallel Claude instances that communicate via shared files.
 
-### How It Works
+### How It Works (The Weird Part)
 
-1. **User writes rough prompt** in Claude Code (e.g., "Fix auth")
-2. **User hits Ctrl-G** → Pattern 2 menu appears
-3. **User selects "Open in Claude"** from fzf menu
-4. **New Claude instance spawns** with specialized prompt enhancement instructions
-5. **Enhancement agent investigates**:
-   - Reads the rough prompt from the temp file
-   - Searches codebase for relevant files
-   - Checks Beads issues for related tasks
-   - Reviews recent commits
-   - Identifies patterns and dependencies
-6. **Agent rewrites prompt** with:
-   - Specific file paths and line numbers
-   - Context from relevant code sections
-   - Links to related Beads issues
-   - Actionable implementation details
-7. **Agent saves enhanced prompt** back to the temp file and exits
-8. **Control returns to original Claude** with the enhanced prompt ready to execute
+**Normal Claude Code Ctrl+G flow:**
+1. User hits Ctrl+G → Opens `$EDITOR` on prompt file
+2. User edits in editor → Saves and closes
+3. Editor process terminates → Claude Code recaptures control
+4. Edited prompt appears in chat input
+
+**What we're doing (Ctrl+G hijacking):**
+1. Set `$EDITOR` to our wrapper script (`claude-editor-hook`)
+2. User hits Ctrl+G → Claude Code spawns wrapper with temp prompt file
+3. Wrapper launches tmux session with command palette
+4. User can choose various actions, including "Enhance (Interactive)"
+5. This spawns a **parallel Claude instance** (not child/subagent - full interactive instance)
+6. Parallel instance has access to the prompt file ({{FILE}})
+7. Parallel instance investigates, modifies the file, then exits
+8. When parallel instance exits → tmux closes → wrapper terminates
+9. **Claude Code captures file contents** on editor process termination
+10. File contents appear as next prompt in TUI input
+
+**Key insight:** The prompt file is a **write-only communication channel** from parallel instance to Claude Code's TUI. The parent Claude instance never reads the file - Claude Code itself captures it when the editor process ends.
+
+### What Makes This Different from Subagents
+
+- **Not a subagent**: This is a full interactive Claude instance (you could hit Ctrl+G again from it)
+- **File-based communication**: Parallel instance writes to file → Claude Code TUI reads on process exit
+- **Process lifecycle**: Control flow managed by process termination, not API calls
+- **Parallel not hierarchical**: More like spawning a coworker than delegating to a child
+- **One-way channel**: Parallel instance → File → Claude Code TUI (parent instance never sees the file)
 
 ### Example Flow
 
@@ -173,22 +183,184 @@ Implementation:
 
 ### Benefits
 
-- **Reduces cognitive load**: User types minimal prompt, gets fully contextualized task
-- **Better first-time execution**: Original Claude has all needed context upfront
+- **Reduces cognitive load**: User types minimal prompt, parallel instance enhances it
+- **Better first-time execution**: Next Claude session has all needed context upfront
 - **Investigative separation**: Enhancement work happens in separate context window
-- **Iterative refinement**: Can reopen in Claude multiple times to refine prompt
+- **Iterative refinement**: Can hit Ctrl+G multiple times to refine prompt before submitting
+- **Context efficiency**: Parent session stays clean, investigation happens elsewhere
+
+### Pattern 2: FZF Command Palette
+
+Pattern 2 provides an extensible FZF-based menu with multiple capabilities:
+
+**Menu Options:**
+- **Edit with Emacs/Vi/Nano** - Open prompt file in chosen editor
+- **Open Terminal** - Drop into bash with `$PROMPT` env var set
+- **Recent Files** - Query mem-sqlite for last 25 files touched by Claude
+- **Detach** - Exit cleanly back to Claude Code
+- **Enhance (Interactive/Non-interactive)** - Spawn parallel Claude instance
+
+### Recent Files Integration (mem-sqlite)
+
+**Overview:**
+The "Recent Files" menu option queries the mem-sqlite database to show the last 25 files Claude touched in recent sessions, enabling quick access to recently read/edited files without searching.
+
+**Architecture:**
+```
+User selects "Recent Files"
+  ↓
+Query mem-sqlite database (~/. local/share/memory-sqlite/claude_code.db)
+  ↓
+Extract file_path from tool_uses where toolName IN ('Read', 'Edit', 'Write')
+  ↓
+Show FZF picker with batcat preview
+  ↓
+User selects file → Open with emacs
+```
+
+**SQL Query Design:**
+```sql
+SELECT DISTINCT
+  json_extract(tu.parameters, '$.file_path') AS file_path,
+  MAX(tu.created) AS last_touched
+FROM tool_uses tu
+WHERE
+  tu.toolName IN ('Read', 'Edit', 'Write')
+  AND json_extract(tu.parameters, '$.file_path') IS NOT NULL
+  AND json_extract(tu.parameters, '$.file_path') != ''
+GROUP BY file_path
+ORDER BY last_touched DESC
+LIMIT 25;
+```
+
+**Implementation Files:**
+- `lib/scripts/query-recent-files.sh` - Bash wrapper for SQLite query
+- `bin/claude-editor-hook` lines 78-110 - FZF menu handler
+- Database: `~/.local/share/memory-sqlite/claude_code.db`
+
+**Requirements:**
+- mem-sqlite must be installed and synced: `cd ~/code/mem-sqlite && npm run cli sync`
+- batcat for file previews (falls back gracefully if missing)
+
+**Features:**
+- FZF fuzzy search across file paths
+- Live preview with syntax highlighting (batcat)
+- Graceful error handling for missing database
+- Handles non-existent files (historical paths)
 
 ### Implementation (Pattern 2)
 
-When user selects "Open in Claude" from the fzf menu:
+When user selects "Enhance (Interactive)" from the fzf menu:
 
 ```bash
+# Load prompt template and substitute file path
+PROMPT_TEMPLATE="$SCRIPT_DIR/../lib/prompts/enhancement-agent.txt"
+PROMPT=$(sed "s|{{FILE}}|$FILE|g" "$PROMPT_TEMPLATE")
+
 tmux new-window
-tmux send-keys "cndsp 'You are a prompt enhancement agent. The file $FILE contains a rough prompt from a user working with Claude Code. Your job: 1) Read the prompt, 2) Investigate the codebase to find relevant context (files, Beads issues, patterns, recent commits), 3) Rewrite the prompt with specific file paths, line numbers, and actionable context, 4) Save the enhanced prompt back to $FILE. Make it detailed enough that the original Claude instance can act on it immediately without further investigation.'" Enter
+tmux send-keys "cndsp '$PROMPT'" Enter
 ```
+
+**Template file** (`lib/prompts/enhancement-agent.txt`):
+The template now accurately describes the parallel instance reality - you're not just an "enhancement agent", you're a parallel Claude instance communicating via file-based IPC. See the template file for current instructions.
+
+**Why use a template file:**
+- Easy to edit and iterate on parallel instance instructions
+- Separates instance behavior from bash script logic
+- Enables customization without touching code
+- Reusable pattern for different parallel instance jobs
+- Template variables (currently `{{FILE}}`) can be extended as needed
+
+### Beyond Prompt Enhancement: The Design Space
+
+While the current template focuses on "investigate and enhance prompt", the parallel instance pattern enables much more:
+
+**One-shot data collection:**
+- "Copy the last 100 server logs into the prompt"
+- "Grab browser console errors and write to prompt"
+- "Get the current git diff and add to prompt"
+
+**Command execution + piping:**
+- User describes desired bash command → Parallel instance executes → Pipes output to prompt file
+- Example: "Show me all TODOs in the codebase" → Instance runs grep → Writes results to file
+
+**Multi-step investigation:**
+- Gather context from multiple sources (logs, code, issues)
+- Synthesize and summarize
+- Write findings back to parent
+
+**Interactive debugging:**
+- Parent asks question → Parallel instance investigates → Writes answer
+- Could even spawn multiple parallel instances for different investigation paths
+
+**Context management efficiency:**
+- Main instance stays clean (minimal context usage)
+- Parallel instances do heavy investigation work
+- Only summarized findings return to parent
+
+See **editor-hook-12** (P1) for designing a flexible template system that supports these diverse use cases.
+
+### The Template Abstraction Question (editor-hook-15)
+
+**Core architectural decision:** What should the template tell the parallel instance?
+
+**Current state:** Template is **prescriptive** - tells instance to "investigate and enhance prompt"
+**Problem:** Too narrow for the diverse use cases the pattern enables
+
+**Four design options:**
+
+**Option 1: Minimal Informational (leading candidate)**
+- Template explains the mechanism only
+- "You're a parallel instance, {{FILE}} is your return channel, use it however you need"
+- Parallel instance is fully interactive - user chats naturally with it
+- Maximum flexibility, minimal constraints
+
+**Option 2: Task-Based Templates**
+- Multiple templates: `lib/prompts/enhance.txt`, `execute.txt`, `investigate.txt`
+- Each prescribes different job type
+- Menu options map to specific templates
+- More structure, easier to optimize per-task
+
+**Option 3: Template with Parameters**
+- Single template with variables: `{{FILE}}`, `{{TASK}}`, `{{CONTEXT}}`
+- Wrapper passes task description as parameter
+- Template interpolates task into instructions
+- Structured but flexible
+
+**Option 4: Hybrid**
+- Minimal base explaining mechanism
+- Optional task overlay passed as additional context
+- Best of both: flexibility + structure when needed
+
+**Key insight:** The parallel instance pattern is fundamentally an **"escape hatch to fresh Claude context with write-to-TUI mechanism"**. Everything else (what the instance does) is application-specific.
+
+**Template's true job:**
+1. Explain you're in a parallel instance (not parent, not subagent)
+2. Identify the communication channel ({{FILE}} → Claude Code TUI on exit)
+3. Clarify the lifecycle (read input → do work → write output → exit → TUI captures)
+4. NOT prescribe what "do work" means
+
+**Critical mechanism detail:** The file is not read by the parent Claude instance. When the parallel instance exits, Claude Code itself captures the file contents and populates the TUI prompt input with that string. This is the standard editor-save-close behavior that we're hijacking.
+
+**Design tension:**
+- **Too directive** → Limits use cases, requires multiple templates or complex logic
+- **Too minimal** → Parallel instance might not understand task, waste tokens exploring
+- **Sweet spot** → Explain mechanism + trust instance to read task from file/context
+
+**Current lean:** Option 1 (minimal informational) with task description written to {{FILE}} by parent or user.
+
+**Next steps:**
+- Draft minimal informational template
+- Test with different use cases (enhance, execute, investigate)
+- Measure if parallel instance "gets it" without directive guidance
+- Document patterns that emerge
 
 ### Related Issues
 
+- **editor-hook-15**: Explore template abstraction (P1) - This architectural decision
+- **editor-hook-10**: Update enhancement-agent.txt to reflect parallel instance reality (P2)
+- **editor-hook-12**: Design flexible template system (P1) - Implementation of chosen approach
+- **editor-hook-13**: Add "Execute Command & Pipe" menu option (P2) - Test case for flexibility
 - editor-hook-19: Prompt enhancement agent implementation
 - editor-hook-14: Use Claude CLI for dynamic menu options
 - editor-hook-16: Drawer-style popup with Claude CLI
