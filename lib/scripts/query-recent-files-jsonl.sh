@@ -66,7 +66,10 @@ fi
     # Only process assistant messages with tool uses
     select(.type == "assistant") |
     select(.message.content != null) |
-    .message.content[] |
+    # Capture timestamp at message level, then process content
+    {timestamp: .timestamp, tools: .message.content} |
+    .timestamp as $ts |
+    .tools[] |
     select(.type == "tool_use") |
     select(.name == "Read" or .name == "Edit" or .name == "Write") |
     select(.input.file_path != null) |
@@ -74,7 +77,7 @@ fi
     select(.input.file_path | test("/tmp/claude-prompt-.*\\.md$") | not) |
     {
         file_path: .input.file_path,
-        timestamp: (.timestamp // "")
+        timestamp: $ts
     }
 ' | jq -s '
     # Group by file_path and keep most recent timestamp
