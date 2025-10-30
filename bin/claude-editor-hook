@@ -40,6 +40,10 @@ case "$PATTERN" in
         # Pattern 2: display-popup + fzf (Interactive Picker)
         echo "Pattern 2: fzf popup menu" >> "$LOG"
 
+        # Get the directory where this script lives (for finding lib/nested-tmux.conf)
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        NESTED_CONF="$SCRIPT_DIR/../lib/nested-tmux.conf"
+
         # Create menu data
         MENU="Edit with Emacs:emacs -nw \"$FILE\"
 Edit with Vi:vi \"$FILE\"
@@ -50,13 +54,21 @@ Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto"
 
         # Show popup with fzf and execute selection
-        exec tmux new-session bash -c "
+        # Use -f flag to load nested config (backtick prefix + command palette binding)
+        exec tmux -f "$NESTED_CONF" new-session bash -c "
             choice=\$(echo '$MENU' | fzf --height=10 --prompt='Command: ' --border --reverse)
             if [ -n \"\$choice\" ]; then
                 cmd=\$(echo \"\$choice\" | cut -d: -f2)
                 if [ \"\$cmd\" = \"open-terminal\" ]; then
                     # Open terminal - set PROMPT env var and drop into bash
                     export PROMPT='$FILE'
+                    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+                    echo \"Claude Editor Workspace\"
+                    echo \"Press Ctrl+backtick (Ctrl+\\\`) to open command palette\"
+                    echo \"Access prompt file: \\\$PROMPT\"
+                    echo \"File: \$PROMPT\"
+                    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+                    echo \"\"
                     exec bash
                 elif [ \"\$cmd\" = \"detach\" ]; then
                     # Just exit cleanly - returns to Claude Code
@@ -76,8 +88,8 @@ Enhance (Non-interactive):claude-enhance-auto"
                     read
                     # Return to Claude Code
                 else
-                    # Regular editor command
-                    exec bash -c \"\$cmd\"
+                    # Regular editor command - run without exec so tmux keybindings work
+                    bash -c \"\$cmd\"
                 fi
             fi
         "
@@ -91,6 +103,7 @@ Enhance (Non-interactive):claude-enhance-auto"
         # Create persistent session if it doesn't exist
         if ! tmux has-session -t "$SESSION" 2>/dev/null; then
             tmux new-session -d -s "$SESSION" emacs -nw "$FILE"
+            # Use -t flag to set option only for this session (not global)
             tmux set-option -t "$SESSION" status off
         fi
 
@@ -105,10 +118,14 @@ Enhance (Non-interactive):claude-enhance-auto"
         # Create temp tmux conf with menu binding
         TMUX_CONF=$(mktemp)
         cat > "$TMUX_CONF" <<EOF
-# Prefix is Ctrl-A (default Ctrl-B conflicts with many editors)
-set-option -g prefix C-a
+# Source user's main tmux config first (for basic settings)
+source-file ~/.tmux.conf
+
+# Prefix is backtick (`) - doesn't conflict with text navigation
+# Use set-option (not -g) for session-local changes
+set-option prefix `
 unbind-key C-b
-bind-key C-a send-prefix
+bind-key ` send-prefix
 
 # Bind Ctrl-A m to show menu
 bind-key m display-menu -T "Switch Tool" -x C -y C \

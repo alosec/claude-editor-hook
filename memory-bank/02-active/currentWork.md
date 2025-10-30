@@ -1,77 +1,95 @@
-# Current Work: Hello World POC Complete! 🎉
+# Current Work: Command Palette Implementation (In Progress)
 
-**Status**: ✅ Foundation working - tmux launcher successfully opens and saves
+**Status**: 🔄 Pattern 2 working, command palette partially functional
 
-**Branch**: `mvp`
+**Branch**: `main`
 
 ## This Week's Focus
 
-Build interactive launcher system on top of working tmux foundation:
-1. **Menu system** - Let user choose batcat/emacs/vim/nano for each invocation
-2. **Config system** - Project-level and global configuration files
-3. **Context dispatching** - Read context files and auto-select launcher mode
+Implementing VS Code-style command palette for Claude Code's Ctrl-G hook:
+1. ✅ **FZF menu on Ctrl-G** - Working! Shows Edit/Terminal/Enhance options
+2. ✅ **Nested tmux session** - Pattern 2 creates isolated workspace with custom config
+3. ✅ **Welcome message** - Shows keybinding hints and $PROMPT variable
+4. 🔄 **Menu from within session** - Workaround: type `claude-editor-menu` directly
+5. ❌ **Keybinding** - Ctrl+backtick not working in nested session (needs investigation)
 
-The tmux foundation is proven - now we build the smart layer on top.
+The command palette paradigm is working conceptually - now need to make menu re-accessible from within the workspace.
 
 ## What We've Done
 
+**Foundation:**
 - ✅ Created project repository at `~/code/claude-editor-hook`
 - ✅ Initialized git with Beads issue tracker (prefix: `editor-hook`)
 - ✅ Written memory bank foundation (projectbrief, systemPatterns)
-- ✅ **BREAKTHROUGH**: Working tmux launcher (unsets $TMUX for nesting)
-- ✅ Verified temp file editing: Ctrl-G → nano → edit → save → returns to Claude Code
-- ✅ Simplified script to 3 lines (bin/claude-editor-hook)
+- ✅ Working tmux launcher (unsets $TMUX for nesting)
+
+**Pattern 2 - FZF Command Palette:**
+- ✅ FZF menu on Ctrl-G with options: Edit (Emacs/Vi/Nano), Open Terminal, Detach, Enhance
+- ✅ Nested tmux session with custom config (`lib/nested-tmux.conf`)
+- ✅ Welcome message showing keybinding and $PROMPT variable
+- ✅ Fixed config leaking (session-local settings, no global pollution)
+- ✅ Helper script `~/.local/bin/claude-editor-menu` (context-aware menu)
+- ✅ Pattern 2 loads nested config with `tmux -f` flag
+- 🔄 Workaround for menu access: type `claude-editor-menu` in terminal
 
 ## What's Next
 
-**Immediate** (P1 - on `mvp` branch):
-1. Interactive menu launcher (editor-hook-9) - fzf/select menu to choose viewer/editor
-2. Context file reading (editor-hook-3) - Parse `~/.claude/editor-context.yaml`
-3. Sequential flow design (editor-hook-4) - Show context, then edit prompt
+**Immediate** (P1):
+1. **editor-hook-2** - Implement persistent tmux sessions (connect to existing or create if not exists) - TOP PRIORITY
+2. **editor-hook-1** - Fix Ctrl+backtick keybinding in nested session (or find better alternative)
+3. **editor-hook-3** - Fix session numbering (avoid incrementing on each Ctrl-G)
 
 **Then** (P2):
-1. Configuration system (editor-hook-10) - `.claude/editor-hook.yaml` (project) + `~/.claude/editor-hook.yaml` (global)
-2. Hybrid tmux layouts (editor-hook-5) - Split panes: context viewer + prompt editor
+1. **editor-hook-4** - Generalize Claude prompt enhancement pattern
+2. Context file reading - Parse `~/.claude/editor-context.yaml`
+3. Configuration system - `.claude/editor-hook.yaml` (project + global)
 
 **Future** (P3):
-1. MCP tool (editor-hook-7) - Let Claude write context files during sessions
+1. Hybrid tmux layouts - Split panes: context viewer + prompt editor
+2. MCP tool - Let Claude write context files during sessions
 
 ## Key Implementation Details
 
-**Current Working Script** (`bin/claude-editor-hook`):
+**Pattern 2 Architecture** (`bin/claude-editor-hook`):
 ```bash
-#!/usr/bin/env bash
-unset TMUX  # Allow nesting tmux sessions
-exec tmux new-session nano "$@"
+# 1. Load nested tmux config with custom keybindings
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+NESTED_CONF="$SCRIPT_DIR/../lib/nested-tmux.conf"
+
+# 2. Show FZF menu and create nested session
+exec tmux -f "$NESTED_CONF" new-session bash -c "
+    # Show menu, execute selection
+    # Set $PROMPT for 'Open Terminal' mode
+"
 ```
 
-**Why This Works**:
+**Why Nested Sessions Work**:
 - Unsets `$TMUX` to bypass tmux's nesting protection
-- Creates new tmux session running nano with the temp file
-- When user exits nano (Ctrl-X), tmux session ends
-- Control returns cleanly to Claude Code with saved changes
+- Creates isolated workspace with custom config (no pollution to main session)
+- `$PROMPT` env var preserves file path for menu access
+- When user exits (Detach), control returns cleanly to Claude Code
 
-**Next: Menu System** (editor-hook-9):
-- Add interactive menu before launching editor
-- Options: batcat (view), nano (edit), vim (edit), emacs (edit)
-- Use bash `select` (simple) or `fzf` (fancy) for menu
+**Key Files**:
+- `bin/claude-editor-hook` - Main entry point, dispatches to patterns
+- `lib/nested-tmux.conf` - Nested session config (Ctrl+backtick binding)
+- `~/.local/bin/claude-editor-menu` - FZF menu helper (context-aware)
+- `~/.claude-editor-hook.conf` - Pattern selection (PATTERN=2)
 
-**Next: Context Reading** (editor-hook-3):
-- Check for `~/.claude/editor-context.yaml`
-- If exists: parse mode and auto-select launcher
-- If not: show menu or use default
+## Current Issues
 
-## Testing Approach
+**editor-hook-1**: Ctrl+backtick keybinding doesn't work in nested session
+- Attempted: prefix keys, -n flag, -T prefix table
+- Workaround: type `claude-editor-menu` directly (opens inline)
+- Need: Better approach (shell alias, persistent window, or debug why binding fails)
 
-✅ **Proven**: Ctrl-G → nano opens → edit → save → returns to Claude Code
-**Next**: Test with batcat viewer, vim, emacs
-
-## Blockers
-
-None! Foundation is solid.
+**editor-hook-2**: Create new session every time vs persistent (TOP PRIORITY)
+- Currently creates new session on each Ctrl-G
+- Should check if session exists and reattach vs create new
+- Pattern 3 has example implementation
+- **CAUTION**: Session name must not leak to main tmux (use unique prefix like `_claude_editor_$$`)
 
 ## Notes
 
-- **Keep it stupid simple** - The 3-line script works perfectly
-- Don't overcomplicate unless there's a real need
-- Each new feature should be additive, not rewriting what works
+- Command palette paradigm is solid - just need reliable menu re-access
+- Config leaking is fixed - no more brown status bars or wrong prefix keys
+- Keep nested session benefits: isolation, flexibility, tmux power
