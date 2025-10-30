@@ -14,17 +14,23 @@ if [ -z "$FILE" ]; then
 fi
 
 # Get the directory where this script lives (to find lib/menu-core.sh)
-# Follow symlinks to get the actual script location
-SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
-while [ -L "$SCRIPT_SOURCE" ]; do
-    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
-    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
-    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
-done
-SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+# Strategy: Find claude-editor-hook (which is symlinked), follow it to the repo
+HOOK_BIN=$(which claude-editor-hook 2>/dev/null)
+if [ -z "$HOOK_BIN" ]; then
+    echo "Error: Cannot find claude-editor-hook in PATH"
+    exit 1
+fi
 
-# Source shared menu core
-MENU_CORE="$SCRIPT_DIR/../lib/menu-core.sh"
+# Follow symlinks on claude-editor-hook to find actual installation
+while [ -L "$HOOK_BIN" ]; do
+    HOOK_DIR="$(cd -P "$(dirname "$HOOK_BIN")" && pwd)"
+    HOOK_BIN="$(readlink "$HOOK_BIN")"
+    [[ $HOOK_BIN != /* ]] && HOOK_BIN="$HOOK_DIR/$HOOK_BIN"
+done
+HOOK_DIR="$(cd -P "$(dirname "$HOOK_BIN")" && pwd)"
+
+# menu-core.sh is in the lib/ directory next to bin/
+MENU_CORE="$HOOK_DIR/../lib/menu-core.sh"
 if [ ! -f "$MENU_CORE" ]; then
     echo "Error: Cannot find lib/menu-core.sh at $MENU_CORE"
     exit 1
