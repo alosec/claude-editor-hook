@@ -9,11 +9,11 @@
 Implementing VS Code-style command palette for Claude Code's Ctrl-G hook:
 1. ✅ **FZF menu on Ctrl-G** - Working! Shows Edit/Terminal/Enhance options
 2. ✅ **Nested tmux session** - Pattern 2 creates isolated workspace with custom config
-3. ✅ **Welcome message** - Shows keybinding hints and $PROMPT variable
-4. 🔄 **Menu from within session** - Workaround: type `claude-editor-menu` directly
-5. ❌ **Keybinding** - Ctrl+backtick not working in nested session (needs investigation)
+3. ✅ **Welcome message** - Shows `menu` command hint and $PROMPT variable
+4. ✅ **Menu from within session** - Type `menu` to reopen command palette
+5. ❌ **Keybinding** - Ctrl+backtick not working (menu alias is better solution)
 
-The command palette paradigm is working conceptually - now need to make menu re-accessible from within the workspace.
+The command palette paradigm is fully functional! Type `menu` from within the workspace to access all commands.
 
 ## What We've Done
 
@@ -26,11 +26,11 @@ The command palette paradigm is working conceptually - now need to make menu re-
 **Pattern 2 - FZF Command Palette:**
 - ✅ FZF menu on Ctrl-G with options: Edit (Emacs/Vi/Nano), Open Terminal, Detach, Enhance
 - ✅ Nested tmux session with custom config (`lib/nested-tmux.conf`)
-- ✅ Welcome message showing keybinding and $PROMPT variable
+- ✅ Welcome message showing `menu` command and $PROMPT variable
 - ✅ Fixed config leaking (session-local settings, no global pollution)
 - ✅ Helper script `~/.local/bin/claude-editor-menu` (context-aware menu)
 - ✅ Pattern 2 loads nested config with `tmux -f` flag
-- 🔄 Workaround for menu access: type `claude-editor-menu` in terminal
+- ✅ **`menu` alias** - Type `menu` from terminal to reopen command palette (clean solution)
 
 ## What's Next
 
@@ -77,10 +77,11 @@ exec tmux -f "$NESTED_CONF" new-session bash -c "
 
 ## Current Issues
 
-**editor-hook-1**: Ctrl+backtick keybinding doesn't work in nested session
-- Attempted: prefix keys, -n flag, -T prefix table
-- Workaround: type `claude-editor-menu` directly (opens inline)
-- Need: Better approach (shell alias, persistent window, or debug why binding fails)
+**editor-hook-1**: Ctrl+backtick keybinding doesn't work in nested session ✅ SOLVED
+- Attempted: prefix keys, -n flag, -T prefix table (all failed)
+- **Solution**: `menu` alias set up automatically in Open Terminal mode
+- User types `menu` → reopens command palette inline
+- Simpler and more discoverable than keybinding
 
 **editor-hook-2**: Create new session every time vs persistent (TOP PRIORITY)
 - Currently creates new session on each Ctrl-G
@@ -90,6 +91,7 @@ exec tmux -f "$NESTED_CONF" new-session bash -c "
 
 ## Notes
 
-- Command palette paradigm is solid - just need reliable menu re-access
+- Command palette paradigm is fully functional with `menu` alias!
 - Config leaking is fixed - no more brown status bars or wrong prefix keys
 - Keep nested session benefits: isolation, flexibility, tmux power
+- `menu` command is more discoverable than Ctrl+backtick (shown in welcome message)

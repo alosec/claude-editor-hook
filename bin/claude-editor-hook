@@ -64,12 +64,14 @@ Enhance (Non-interactive):claude-enhance-auto"
                     export PROMPT='$FILE'
                     echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
                     echo \"Claude Editor Workspace\"
-                    echo \"Press Ctrl+backtick (Ctrl+\\\`) to open command palette\"
+                    echo \"Type 'menu' to open command palette\"
                     echo \"Access prompt file: \\\$PROMPT\"
                     echo \"File: \$PROMPT\"
                     echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
                     echo \"\"
-                    exec bash
+                    # Set up menu alias and launch bash with it available
+                    # Source user's bashrc first, then add menu alias
+                    exec bash --rcfile <(cat ~/.bashrc 2>/dev/null; echo 'alias menu=\"claude-editor-menu\"')
                 elif [ \"\$cmd\" = \"detach\" ]; then
                     # Just exit cleanly - returns to Claude Code
                     exit 0
