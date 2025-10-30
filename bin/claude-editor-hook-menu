@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Show the FZF menu from within a tmux session
+
+# Use PROMPT if set, otherwise ask for file path
+FILE="${PROMPT:-}"
+if [ -z "$FILE" ]; then
+    echo -n "File path (or press Enter to skip): "
+    read FILE
+fi
+
+# Menu items
+MENU="Edit with Emacs:emacs -nw \"$FILE\"
+Edit with Vi:vi \"$FILE\"
+Edit with Nano:nano \"$FILE\"
+Open Terminal:open-terminal
+Detach:detach"
+
+# Show FZF menu
+choice=$(echo "$MENU" | fzf --height=10 --prompt='Command: ' --border --reverse)
+
+if [ -n "$choice" ]; then
+    cmd=$(echo "$choice" | cut -d: -f2)
+
+    if [ "$cmd" = "open-terminal" ]; then
+        # Open new window with bash
+        tmux new-window -n "Terminal" bash
+    elif [ "$cmd" = "detach" ]; then
+        tmux detach-client
+    else
+        # Execute editor command in new window
+        tmux new-window -n "Editor" $cmd
+    fi
+fi

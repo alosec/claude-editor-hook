@@ -44,8 +44,6 @@ case "$PATTERN" in
         MENU="Edit with Emacs:emacs -nw \"$FILE\"
 Edit with Vi:vi \"$FILE\"
 Edit with Nano:nano \"$FILE\"
-Open Terminal:open-terminal
-Detach:detach
 Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto"
 
@@ -54,14 +52,7 @@ Enhance (Non-interactive):claude-enhance-auto"
             choice=\$(echo '$MENU' | fzf --height=10 --prompt='Command: ' --border --reverse)
             if [ -n \"\$choice\" ]; then
                 cmd=\$(echo \"\$choice\" | cut -d: -f2)
-                if [ \"\$cmd\" = \"open-terminal\" ]; then
-                    # Open terminal - set PROMPT env var and drop into bash
-                    export PROMPT='$FILE'
-                    exec bash
-                elif [ \"\$cmd\" = \"detach\" ]; then
-                    # Just exit cleanly - returns to Claude Code
-                    exit 0
-                elif [ \"\$cmd\" = \"claude-spawn-interactive\" ]; then
+                if [ \"\$cmd\" = \"claude-spawn-interactive\" ]; then
                     # Interactive enhancement - spawn new Claude window for investigation
                     # User can review and approve the enhanced prompt before returning
 

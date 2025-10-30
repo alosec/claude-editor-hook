@@ -4,18 +4,14 @@
 
 ## Current Status
 
-⚠️ **This isvibe-coded experimental software. The main functionality delivers, but expect rough edges.**
+✅ **Working and Simple** - Pattern 2 with FZF menu.
 
 **✅ Working Now:**
-- FZF command palette menu with editor selection (emacs, vi, nano)
-- Interactive prompt enhancement (spawns new Claude window for investigation)
-- Non-interactive prompt enhancement (auto-enhances with Claude + Haiku)
-- Installation system with git metadata tracking
-- Pattern-based configuration system
-
-**🚧 Experimental:**
-- 8 menu pattern implementations for research (Pattern 2 is the settled approach)
-- Installation script (works but not well tested)
+- FZF command palette with 6 options
+- Edit with Emacs/Vi/Nano (returns to Claude Code when done)
+- **Open Terminal** (full shell with `$PROMPT` env var set to temp file path)
+- Interactive + non-interactive prompt enhancement
+- Configurable via `~/.claude-editor-hook.conf` (set `PATTERN=2`)
 
 **📋 Planned:**
 - Enhanced history viewer - "Better Ctrl-O" that parses ~/.claude/projects for rich activity view (editor-hook-22)
@@ -35,7 +31,7 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 - 📋 **Tmux layouts** with editor, logs, and test panes (planned)
 - 📋 **Log streams** from servers or browsers (planned)
 
-## How It Works (Current Implementation)
+## How It Works
 
 ```
 ┌───────────────────────────────────────────────┐
@@ -43,23 +39,26 @@ When you press `Ctrl-G` in Claude Code to edit a prompt, it launches whatever is
 └───────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────┐
-│  Claude Code launches $EDITOR                 │
-│  $EDITOR = claude-editor-hook                 │
+│  FZF menu appears:                            │
+│  • Edit with Emacs                            │
+│  • Edit with Vi                               │
+│  • Edit with Nano                             │
+│  • Open Terminal ($PROMPT available)          │
+│  • Enhance (Interactive)                      │
+│  • Enhance (Non-interactive)                  │
 └───────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────┐
-│  FZF menu appears with options:               │
-│  • Edit with Emacs/Vi/Nano                    │
-│  • Enhance (Interactive) - spawn Claude       │
-│  • Enhance (Non-interactive) - auto-enhance   │
-└───────────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────┐
-│  Selected tool launches in tmux session       │
+│  Select action → Execute → Exit returns to    │
+│  Claude Code with your edited prompt          │
 └───────────────────────────────────────────────┘
 ```
 
-**Extensibility:** New capabilities are added by inserting menu options in the FZF menu (Pattern 2 at lines 43-48 of `bin/claude-editor-hook`). Menu items can launch any script, CLI tool, or inline bash command.
+**Key Features:**
+- **Simple FZF menu** - Fuzzy searchable command palette
+- **Open Terminal** - Full bash shell with `$PROMPT` env var pointing to temp file
+- **Prompt enhancement** - Interactive or auto modes for Claude to investigate and enhance prompts
+- **Clean and minimal** - Just works, no complexity
 
 ## Example Use Cases
 

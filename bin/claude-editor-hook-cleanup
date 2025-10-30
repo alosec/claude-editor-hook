@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Cleanup utility for Claude Editor Hook sessions
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOK_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Run the cleanup script
+exec "$HOOK_ROOT/lib/session-cleanup.sh" "$@"
