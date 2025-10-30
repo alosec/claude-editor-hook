@@ -116,15 +116,21 @@ Enhance (Non-interactive):claude-enhance-auto"
                     # Just exit cleanly - returns to Claude Code
                     exit 0
                 elif [ \"\$cmd\" = \"claude-spawn-interactive\" ]; then
-                    # Interactive enhancement - spawn new Claude window for investigation
-                    # User can review and approve the enhanced prompt before returning
+                    # Interactive subagent - spawn new Claude window with context package
+                    # Subagent reads context files and writes enhanced output back to prompt file
 
-                    # Load prompt template and substitute file path
-                    PROMPT_TEMPLATE=\"$SCRIPT_DIR/../lib/prompts/enhancement-agent.txt\"
-                    PROMPT=\$(sed \"s|{{FILE}}|$FILE|g\" \"\$PROMPT_TEMPLATE\")
+                    # Create subagent context package
+                    CONTEXT_DIR=\"/tmp/claude-subagent-\$\$\"
+                    bash \"$SCRIPT_DIR/../lib/scripts/create-subagent-context.sh\" \"$FILE\" \"\$CONTEXT_DIR\"
 
-                    tmux new-window
-                    tmux send-keys \"cndsp '\$PROMPT'\" Enter
+                    # Spawn subagent with context
+                    tmux new-window bash -c \"
+                      export CONTEXT_DIR='\$CONTEXT_DIR'
+                      cd '$PWD'
+                      exec claude \\\\
+                        --dangerously-skip-permissions \\\\
+                        --append-system-prompt \\\"\\\$(cat '\$CONTEXT_DIR/system-prompt.txt')\\\"
+                    \"
                 elif [ \"\$cmd\" = \"claude-enhance-auto\" ]; then
                     # Non-interactive enhancement - auto-replace *** markers *** with context
                     # Call claude -p with Haiku to read, investigate, and write back to file

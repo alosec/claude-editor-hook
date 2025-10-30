@@ -11,6 +11,7 @@
 - Edit with Emacs/Vi/Nano (returns to Claude Code when done)
 - **Open Terminal** (full shell with `$PROMPT` env var set to temp file path)
 - **Recent Files** - Query JSONL logs for last 25 files Claude touched (with intelligent caching)
+- **Subagent Context Package** - Spawn Claude instances with rich parent context (conversation + tools + files)
 - Interactive + non-interactive prompt enhancement
 - Configurable via `~/.claude-editor-hook.conf` (set `PATTERN=2`)
 
@@ -79,6 +80,40 @@ The Recent Files feature reads Claude Code's JSONL session logs directly from `~
 4. Groups by file path, keeps most recent timestamp
 5. Returns top 25 files, most recent first
 
+**Subagent Context Package Details:**
+When spawning interactive Claude instances (Ctrl-G → "Enhance (Interactive)"), a context package is automatically created with:
+
+**Context Package Structure:**
+```
+/tmp/claude-subagent-{PID}/
+├── system-prompt.txt     # Instructions + output file path
+├── parent-context.md     # Last 15 conversation turns with tool usage
+├── recent-files.txt      # 25 most recently edited files
+└── meta.json            # Metadata (working dir, timestamps)
+```
+
+**Parent Context Format:**
+```markdown
+## USER
+[user message]
+
+## ASSISTANT
+[assistant response]
+
+**Tools Used:**
+- `Read` → /path/to/file.js
+- `Edit` → /path/to/modified.ts
+- `Bash` → Command description
+- `Grep` → Pattern: search_term
+```
+
+**Benefits:**
+- Subagents understand parent conversation context
+- See what files were recently read/edited
+- Know what commands were run
+- Clear output channel (write to specified file)
+- No shell escaping issues (file-based prompt injection)
+
 ## Example Use Cases
 
 **✅ Prompt Enhancement (Working Now)**:
@@ -88,10 +123,15 @@ The Recent Files feature reads Claude Code's JSONL session logs directly from `~
 - Rewrites prompt with specific file paths, line numbers, and context
 - Returns to main Claude session with enhanced prompt
 
-**✅ Interactive Enhancement (Working Now)**:
+**✅ Interactive Enhancement with Context Package (Working Now)**:
 - Hit Ctrl-G → Choose "Enhance (Interactive)"
-- New Claude window opens for manual investigation
-- You review findings and approve before returning
+- New Claude subagent window opens with rich context:
+  - Recent conversation history (last 15 turns)
+  - Tool usage (Read/Edit/Write/Bash/Grep actions)
+  - Recently edited files (last 25 files)
+  - Clear instructions on output file location
+- Subagent investigates, enhances prompt, writes back
+- Exit returns enhanced prompt to parent Claude session
 
 **✅ Editor Selection (Working Now)**:
 - Hit Ctrl-G → FZF menu shows Emacs/Vi/Nano options
