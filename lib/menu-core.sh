@@ -50,8 +50,52 @@ Enhance (Non-interactive):claude-enhance-auto"
             # Recent Files - query JSONL logs directly with caching
             local QUERY_SCRIPT="$SCRIPT_DIR/scripts/query-recent-files-jsonl.sh"
 
-            # Query recent files and show in FZF
-            local selected_file=$(bash "$QUERY_SCRIPT" 2>/tmp/recent-files-error.$$ | fzf --height=100% --prompt='Recent Files (JSONL): ' --border --reverse --preview='batcat --color=always --style=numbers {}' --preview-window=up:70%:wrap)
+            # Get project root and home directory for path truncation
+            local PROJECT_DIR="$PWD"
+            local HOME_DIR="$HOME"
+
+            # Query recent files, truncate paths, and show in FZF
+            # Create temporary file to store full_path:truncated_path mapping
+            local MAPPING_FILE="/tmp/recent-files-mapping.$$"
+            local DISPLAY_FILE="/tmp/recent-files-display.$$"
+
+            # Clear temp files
+            > "$MAPPING_FILE"
+            > "$DISPLAY_FILE"
+
+            # Process paths: truncate and create mapping
+            while IFS= read -r full_path; do
+                local truncated_path="$full_path"
+
+                # Truncate project directory to ./
+                if [[ "$full_path" == "$PROJECT_DIR"/* ]]; then
+                    truncated_path="./${full_path#$PROJECT_DIR/}"
+                # Truncate home directory to ~/
+                elif [[ "$full_path" == "$HOME_DIR"/* ]]; then
+                    truncated_path="~/${full_path#$HOME_DIR/}"
+                fi
+
+                # Store mapping: truncated_path -> full_path
+                echo "$truncated_path|$full_path" >> "$MAPPING_FILE"
+                echo "$truncated_path" >> "$DISPLAY_FILE"
+            done < <(bash "$QUERY_SCRIPT" 2>/tmp/recent-files-error.$$)
+
+            # Show truncated paths in FZF
+            local selected_truncated=$(cat "$DISPLAY_FILE" | fzf --height=100% --prompt='Recent Files (JSONL): ' --border --reverse --preview="
+                # Extract full path from mapping file
+                full_path=\$(grep -F '{}|' '$MAPPING_FILE' | head -1 | cut -d'|' -f2)
+                if [ -n \"\$full_path\" ]; then
+                    batcat --color=always --style=numbers \"\$full_path\"
+                else
+                    echo 'File path not found in mapping'
+                fi
+            " --preview-window=up:70%:wrap)
+
+            # Map truncated selection back to full path
+            local selected_file=$(grep "^${selected_truncated}|" "$MAPPING_FILE" | cut -d"|" -f2)
+
+            # Cleanup temp files
+            rm -f "$MAPPING_FILE" /tmp/recent-files-display.$$
 
             # Check for errors
             if [ -s /tmp/recent-files-error.$$ ]; then
@@ -62,8 +106,20 @@ Enhance (Non-interactive):claude-enhance-auto"
             elif [ -n "$selected_file" ]; then
                 # File selected - check if it exists
                 if [ -f "$selected_file" ]; then
-                    # File exists - open with emacs
-                    emacs -nw "$selected_file"
+                    # File exists - show sub-menu for action choice
+                    local action=$(echo -e "View (batcat)\nEdit (emacs)" | fzf --height=40% --prompt='Action: ' --border --reverse)
+
+                    case "$action" in
+                        "View (batcat)")
+                            batcat --paging=always "$selected_file"
+                            ;;
+                        "Edit (emacs)")
+                            emacs -nw "$selected_file"
+                            ;;
+                        *)
+                            # User cancelled sub-menu
+                            ;;
+                    esac
                 elif [ -d "$(dirname "$selected_file")" ]; then
                     # File doesn't exist but directory does - cd to directory
                     echo "File not found: $selected_file"
