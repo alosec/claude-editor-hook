@@ -172,18 +172,18 @@ Enhance (Non-interactive):claude-enhance-auto"
             echo "=== SYSTEM PROMPT ==="
             cat "$CONTEXT_DIR/system-prompt.txt"
             echo ""
-            echo "=== RECENT CONVERSATION ==="
+            echo "=== RECENT CONVERSATION (last 2000 chars) ==="
             if [[ -f "$CONTEXT_DIR/parent-context.md" ]]; then
-                local total_lines=$(wc -l < "$CONTEXT_DIR/parent-context.md")
-                echo "(Showing last 50 of $total_lines lines)"
-                tail -50 "$CONTEXT_DIR/parent-context.md"
+                # Show last 2000 characters to avoid cutting mid-message
+                # This typically captures 2-3 recent exchanges
+                tail -c 2000 "$CONTEXT_DIR/parent-context.md"
             else
                 echo "(No parent context available)"
             fi
             echo ""
-            echo "=== RECENT FILES (first 10) ==="
+            echo "=== RECENT FILES (3 most recent) ==="
             if [[ -f "$CONTEXT_DIR/recent-files.txt" ]]; then
-                head -10 "$CONTEXT_DIR/recent-files.txt"
+                head -3 "$CONTEXT_DIR/recent-files.txt"
             else
                 echo "(No recent files available)"
             fi
