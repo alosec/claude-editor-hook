@@ -188,26 +188,11 @@ Enhance (Non-interactive):claude-enhance-auto"
                 echo "(No recent files available)"
             fi
             echo ""
-            echo "=== USER PROMPT ==="
-            echo "Default: $(head -1 "$CONTEXT_DIR/user-prompt.txt")"
-            echo ""
-            echo "Press Enter to use default, or type custom prompt for Haiku:"
-            read -r custom_prompt
-
-            # Use custom prompt if provided, otherwise use default
-            if [[ -n "$custom_prompt" ]]; then
-                echo "$custom_prompt" > "$CONTEXT_DIR/custom-user-prompt.txt"
-                local PROMPT_FILE="$CONTEXT_DIR/custom-user-prompt.txt"
-            else
-                local PROMPT_FILE="$CONTEXT_DIR/user-prompt.txt"
-            fi
-
-            echo ""
             echo "=== LAUNCHING HAIKU ENHANCEMENT ==="
             echo ""
 
             # Call claude with context package (system prompt + user prompt)
-            cat "$PROMPT_FILE" | claude -p --verbose --output-format stream-json --dangerously-skip-permissions --model haiku --append-system-prompt "$(cat "$CONTEXT_DIR/system-prompt.txt")" | bash "$STREAM_PARSER"
+            cat "$CONTEXT_DIR/user-prompt.txt" | claude -p --verbose --output-format stream-json --dangerously-skip-permissions --model haiku --append-system-prompt "$(cat "$CONTEXT_DIR/system-prompt.txt")" | bash "$STREAM_PARSER"
 
             # Show what Haiku wrote to the temp file
             echo ""
