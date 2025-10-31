@@ -23,11 +23,16 @@ Available context in \$CONTEXT_DIR ($OUTPUT_DIR):
 - recent-files.txt: Files recently edited in this session
 - meta.json: Working directory and metadata
 
+Your capabilities:
+1. Context investigation: Replace *** text *** or <<< text >>> markers with investigated details
+2. Spell checking: Fix spelling errors throughout the prompt
+3. Question response: If prompt contains '?', provide suggested answers
+
 Your workflow:
-1. Read the prompt file to identify sections marked with *** text *** or <<< text >>>
-2. Use Read, Grep, Glob, Bash tools to investigate each marked area
-3. Gather concrete details (file paths, line numbers, code snippets, patterns)
-4. Replace marked sections with your findings
+1. Read the prompt file
+2. Fix any spelling errors
+3. Investigate marked sections (*** or <<<>>>), gather concrete details (file paths, line numbers, code snippets)
+4. If prompt contains questions (?), suggest responses based on codebase investigation
 5. Write the enhanced prompt back to the prompt file
 6. Output only 'Done' when complete
 
@@ -36,15 +41,17 @@ EOF
 
 # Create user prompt that triggers the enhancement
 cat > "$OUTPUT_DIR/user-prompt.txt" <<EOF
-Read the prompt file at $PROMPT_FILE and enhance sections marked with *** text *** or <<< text >>>.
+Read the prompt file at $PROMPT_FILE and perform these enhancements:
 
-Marked sections indicate areas needing investigation or context:
-- File references that need paths/line numbers
-- Feature descriptions needing architecture context
-- Bug reports needing related code patterns
-- Questions needing answers from the codebase
+1. **Spell checking**: Fix any spelling errors throughout the prompt
+2. **Context investigation**: Replace sections marked with *** text *** or <<< text >>> with investigated details:
+   - File references → file paths and line numbers
+   - Feature descriptions → architecture context
+   - Bug reports → related code patterns
+   - Questions → answers from the codebase
+3. **Question response**: If the prompt contains '?', investigate and suggest responses
 
-Investigate each marked section, gather concrete details, then write the enhanced prompt back to $PROMPT_FILE.
+Use Read, Grep, Glob, Bash tools to gather concrete details. Write the enhanced prompt back to $PROMPT_FILE.
 EOF
 
 # Query recent files (useful for context about what user is working on)
