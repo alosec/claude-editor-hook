@@ -166,6 +166,31 @@ Enhance (Non-interactive):claude-enhance-auto"
             local CONTEXT_DIR="/tmp/claude-subagent-lite-$$"
             bash "$SCRIPT_DIR/scripts/create-subagent-context-lite.sh" "$FILE" "$CONTEXT_DIR"
 
+            # Show context preview before calling Haiku
+            echo "Here's what I'm telling Haiku about the current situation:"
+            echo ""
+            echo "=== SYSTEM PROMPT ==="
+            cat "$CONTEXT_DIR/system-prompt.txt"
+            echo ""
+            echo "=== RECENT CONVERSATION ==="
+            if [[ -f "$CONTEXT_DIR/parent-context.md" ]]; then
+                local total_lines=$(wc -l < "$CONTEXT_DIR/parent-context.md")
+                echo "(Showing last 50 of $total_lines lines)"
+                tail -50 "$CONTEXT_DIR/parent-context.md"
+            else
+                echo "(No parent context available)"
+            fi
+            echo ""
+            echo "=== RECENT FILES (first 10) ==="
+            if [[ -f "$CONTEXT_DIR/recent-files.txt" ]]; then
+                head -10 "$CONTEXT_DIR/recent-files.txt"
+            else
+                echo "(No recent files available)"
+            fi
+            echo ""
+            echo "=== LAUNCHING HAIKU ENHANCEMENT ==="
+            echo ""
+
             # Call claude with context package (system prompt + user prompt)
             cat "$CONTEXT_DIR/user-prompt.txt" | claude -p --verbose --output-format stream-json --dangerously-skip-permissions --model haiku --append-system-prompt "$(cat "$CONTEXT_DIR/system-prompt.txt")" | bash "$STREAM_PARSER"
 
