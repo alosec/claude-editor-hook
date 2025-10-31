@@ -159,9 +159,17 @@ Enhance (Non-interactive):claude-enhance-auto"
 
         claude-enhance-auto)
             # Non-interactive enhancement - auto-replace *** markers *** with context
-            # Call claude -p with Haiku to read, investigate, and write back to file
-            claude -p --verbose --dangerously-skip-permissions --model haiku "Read the file $FILE. It contains a prompt with sections marked *** text *** or <<< text >>> that need investigation. For each marked section, use Read, Grep, Bash tools to investigate and gather context (file paths, line numbers, Beads issues, patterns). Replace the marked sections with your findings. Write the enhanced prompt back to $FILE. Output only 'Done' when complete."
+            # Uses lightweight context package pattern optimized for Haiku
+            local STREAM_PARSER="$SCRIPT_DIR/scripts/stream-claude-output.sh"
 
+            # Create lightweight subagent context package
+            local CONTEXT_DIR="/tmp/claude-subagent-lite-$$"
+            bash "$SCRIPT_DIR/scripts/create-subagent-context-lite.sh" "$FILE" "$CONTEXT_DIR"
+
+            # Call claude with context package via system prompt
+            claude -p --verbose --output-format stream-json --dangerously-skip-permissions --model haiku --append-system-prompt "$(cat "$CONTEXT_DIR/system-prompt.txt")" | bash "$STREAM_PARSER"
+
+            echo ""
             echo "Press Enter to return to Claude Code..."
             read
             ;;
