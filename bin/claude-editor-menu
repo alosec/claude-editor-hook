@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Helper script to show FZF menu from within tmux sessions
+# Called by:
+# 1. User typing 'menu' in terminal (alias set in Open Terminal option)
+# 2. Tmux keybinding (Ctrl-` from lib/nested-tmux.conf)
+
+# Get the file path from environment variable set by "Open Terminal"
+FILE="${PROMPT:-}"
+
+if [ -z "$FILE" ]; then
+    echo "Error: No prompt file found. This command should be run from within a Claude editor session."
+    echo "Hint: Use Ctrl-G in Claude Code, then choose 'Open Terminal' to access this menu."
+    exit 1
+fi
+
+# Get the directory where this script lives (to find lib/menu-core.sh)
+# Strategy: Find claude-editor-hook (which is symlinked), follow it to the repo
+HOOK_BIN=$(which claude-editor-hook 2>/dev/null)
+if [ -z "$HOOK_BIN" ]; then
+    echo "Error: Cannot find claude-editor-hook in PATH"
+    exit 1
+fi
+
+# Follow symlinks on claude-editor-hook to find actual installation
+while [ -L "$HOOK_BIN" ]; do
+    HOOK_DIR="$(cd -P "$(dirname "$HOOK_BIN")" && pwd)"
+    HOOK_BIN="$(readlink "$HOOK_BIN")"
+    [[ $HOOK_BIN != /* ]] && HOOK_BIN="$HOOK_DIR/$HOOK_BIN"
+done
+HOOK_DIR="$(cd -P "$(dirname "$HOOK_BIN")" && pwd)"
+
+# menu-core.sh is in the lib/ directory next to bin/
+MENU_CORE="$HOOK_DIR/../lib/menu-core.sh"
+if [ ! -f "$MENU_CORE" ]; then
+    echo "Error: Cannot find lib/menu-core.sh at $MENU_CORE"
+    exit 1
+fi
+source "$MENU_CORE"
+
+# Open menu in new tmux window within existing session
+# When the window closes, it automatically returns to the calling window
+tmux new-window "source '$MENU_CORE' && show_menu '$FILE'"
