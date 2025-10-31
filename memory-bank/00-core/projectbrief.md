@@ -1,58 +1,117 @@
 # Project Brief: Claude Editor Hook
 
-## What We're Building
+## What This Is
 
-A powerful context-aware editor launcher that lets Claude orchestrate what opens when you hit `Ctrl-G` in Claude Code. Instead of always opening the same editor, Claude writes configuration files that define rich, contextual views of your codebase.
+A command palette for Claude Code that intercepts `Ctrl-G` to provide an extensible FZF menu with editors, tools, and specialized enhancement agents - plus a persistent tmux workspace for long-running tasks.
 
 ## The Core Idea
 
-When you press `Ctrl-G` in Claude Code to edit a prompt, the `$EDITOR` environment variable determines what launches. By pointing `$EDITOR` to our wrapper script instead of directly to emacs or vi, we intercept that hook and can do **anything**:
+When you press `Ctrl-G` in Claude Code to edit a prompt, the `$EDITOR` environment variable determines what launches. By pointing `$EDITOR` to our wrapper script, we intercept that hook and provide an interactive menu that can:
 
-- Open multiple files at specific line numbers in emacs
-- Display file previews with batcat for quick viewing
-- Present an interactive menu with numbered options
-- Launch a tmux session with editor, logs, and test panes
-- Stream server logs or browser console output
-- Even more creative possibilities...
+- **Launch editors** - Emacs, Vi, Nano for quick edits
+- **Open workspace** - Full bash shell with `$PROMPT` env var
+- **Recent Files** - Query last 25 files Claude touched (via JSONL parsing)
+- **Enhance prompts** - Spawn Claude subagents with rich parent context
+- **Detach/return** - Flexible workflow control
 
 ## How It Works
 
 ```
-User hits Ctrl-G
+User hits Ctrl-G in Claude Code
     ↓
 Claude Code launches $EDITOR
     ↓
-$EDITOR = ~/code/claude-editor-hook/bin/claude-editor-hook
+$EDITOR = ~/.local/bin/claude-editor-hook
     ↓
-Wrapper reads ~/.claude/editor-context.yaml
+Hook creates/attaches to persistent "Claude" tmux session
     ↓
-Claude has written: mode=emacs, files=[foo.js:42, bar.js:108]
+FZF menu appears with 8 options:
+  • Edit with Emacs/Vi/Nano
+  • Open Terminal
+  • Recent Files (JSONL-based)
+  • Detach
+  • Enhance (Interactive/Non-interactive)
     ↓
-Wrapper dispatches to lib/launcher-emacs.sh
-    ↓
-Emacs opens with both files at the right line numbers
+User selection executes → Returns to Claude Code when done
 ```
 
-## Why This Is Powerful
+## Current Features (Working Now)
 
-**Bidirectional Protocol**: Claude can write the context file during conversation, setting up exactly what you need to see. When you hit `Ctrl-G`, your environment responds to Claude's orchestration.
+### FZF Command Palette
+- **Session Persistence** - Always uses tmux session named "Claude"
+- **Unified Menu System** - Shared `lib/menu-core.sh` for consistency
+- **Extensible** - Add new options by editing menu definition
 
-**Extensible**: New launchers are just bash scripts in `lib/`. Want to add browser DevTools logs? Write `launcher-browser.sh`. Want to show git diffs? Write `launcher-diff.sh`.
+### Recent Files Integration
+- **Direct JSONL Parsing** - Reads `~/.claude/projects/` session logs
+- **Intelligent Caching** - First run ~1s, subsequent runs <100ms
+- **Zero Dependencies** - No external daemons required
+- **Preview with batcat** - Syntax-highlighted file preview in FZF
 
-**Context-Aware**: Claude understands what you're working on. It can prepare the perfect view: files you need to edit, logs you need to monitor, tests you need to run.
+### Subagent Context Packages
+- **Parent Context Awareness** - Subagents see last 15 conversation turns
+- **Tool Usage Tracking** - Know what files were read/edited/written
+- **File-based IPC** - Clean interface, no shell escaping issues
+- **Auto-generated** - Context package created automatically on spawn
 
-## Use Cases
+### Workspace Features
+- **Terminal Access** - `$PROMPT` env var points to prompt file
+- **Menu Alias** - Type `menu` to reopen command palette
+- **Persistent Windows** - Create additional tmux windows for parallel work
 
-- **Code Review**: Claude identifies 5 files needing changes, sets up split-pane emacs view
-- **Debugging**: Claude detects an error, opens the file at the error line + relevant logs in batcat
-- **Testing**: Claude triggers a test run, opens tmux with code, test output, and server logs
-- **Exploration**: Claude presents a menu of 10 relevant files, you pick which to explore
-- **Log Analysis**: Claude tails server logs and browser console, filtered to relevant errors
+## Architecture
+
+**Entry Point:** `bin/claude-editor-hook` (Pattern 2 - FZF menu)
+
+**Shared Logic:** `lib/menu-core.sh` - Single source of truth for menu
+
+**Helper Scripts:**
+- `lib/scripts/query-recent-files-jsonl.sh` - Parse JSONL logs with caching
+- `lib/scripts/create-subagent-context.sh` - Build context packages
+- `lib/scripts/extract-parent-context.sh` - Extract conversation history
+
+**Config:** Project or global `.claude-editor-hook.conf` (sets PATTERN)
+
+## Use Cases (Working Now)
+
+**Prompt Enhancement:**
+- Hit Ctrl-G → "Enhance (Interactive)"
+- Claude subagent opens with full conversation context
+- Investigates codebase, rewrites prompt with specifics
+- Exit returns enhanced prompt to parent session
+
+**Recent Files Access:**
+- Hit Ctrl-G → "Recent Files"
+- See last 25 files touched across all sessions
+- FZF picker with batcat preview
+- Select → View or Edit
+
+**Terminal Workspace:**
+- Hit Ctrl-G → "Open Terminal"
+- Full bash shell with `$PROMPT` env var
+- Type `menu` to reopen palette
+- Run commands, edit files, explore codebase
+
+**Quick Edits:**
+- Hit Ctrl-G → "Edit with Emacs/Vi/Nano"
+- Traditional editor workflow
+
+## Future Exploration
+
+**Multi-Agent Orchestration** (research phase):
+- Persistent specialized agents (Planning, Coding, Testing)
+- Chief of Staff pattern for workflow delegation
+- See `memory-bank/01-architecture/multi-agent-orchestration-exploration.md`
+
+**Context File System** (deferred):
+- Original vision of YAML-driven multi-file opening
+- May revisit if use cases emerge
+- Command palette proved more flexible in practice
 
 ## Project Status
 
-**Current**: Initial planning and setup
+**Current:** ✅ Feature-complete command palette with 8 working options
 
-**Next**: MVP implementation with emacs and batcat launchers
+**Recent:** JSONL migration, menu unification, context packages (Oct 2025)
 
-**Future**: MCP integration for Claude to write context files, tmux orchestration, menu system
+**Exploring:** Multi-agent orchestration patterns (speculative)

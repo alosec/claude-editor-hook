@@ -1,6 +1,6 @@
 # System Architecture
 
-## Hook Flow
+## Current Architecture (Pattern 2 - FZF Command Palette)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -12,367 +12,339 @@
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  Main Wrapper (bin/claude-editor-hook)                      │
-│  • Reads ~/.claude/editor-context.yaml                      │
-│  • Parses mode, files, options                              │
-│  • Dispatches to appropriate launcher                       │
+│  • Creates/attaches to persistent "Claude" tmux session     │
+│  • Loads lib/menu-core.sh                                   │
+│  • Shows FZF menu with 8 options                            │
 └─────────────────────────────────────────────────────────────┘
                           ↓
-       ┌─────────────────┼─────────────────┐
-       ↓                 ↓                  ↓
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│ launcher-    │  │ launcher-    │  │ launcher-    │
-│ emacs.sh     │  │ batcat.sh    │  │ menu.sh      │
-├──────────────┤  ├──────────────┤  ├──────────────┤
-│ Open files   │  │ Display      │  │ Show menu    │
-│ at line #s   │  │ previews     │  │ with options │
-└──────────────┘  └──────────────┘  └──────────────┘
+       ┌─────────────────┼─────────────────┬──────────────────┐
+       ↓                 ↓                  ↓                  ↓
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ Editors      │  │ Terminal     │  │ Recent Files │  │ Enhancement  │
+│ (Emacs/Vi)   │  │ Workspace    │  │ (JSONL)      │  │ Agents       │
+├──────────────┤  ├──────────────┤  ├──────────────┤  ├──────────────┤
+│ Edit prompt  │  │ Full shell   │  │ FZF picker   │  │ Context-     │
+│ file         │  │ with $PROMPT │  │ + batcat     │  │ aware subs   │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
-## Context File Schema
+## Hook Flow
 
-The context file (`~/.claude/editor-context.yaml`) defines what happens on Ctrl-G:
+**Normal Ctrl-G flow:**
+1. User hits Ctrl-G → Claude Code spawns `$EDITOR` with temp prompt file
+2. Editor opens → User edits → Saves and closes
+3. Editor process terminates → Claude Code reads file contents
+4. File contents appear in Claude Code prompt input
 
-```yaml
-# Mode determines which launcher to use
-mode: emacs | batcat | menu | tmux | custom
+**Our intercepted flow:**
+1. `$EDITOR = ~/.local/bin/claude-editor-hook`
+2. Hook creates/attaches persistent tmux session named "Claude"
+3. FZF menu appears with 8 options
+4. User selects action → Executes → Process terminates
+5. Claude Code reads file contents (if modified)
+6. User returns to Claude Code session
 
-# Files to open/display with optional line numbers
-files:
-  - path: /path/to/file.js
-    line: 42
-    description: "Function to review"
-  - path: /path/to/other.py
-    line: 108
+## Unified Menu System
 
-# Commands to run (for tmux mode)
-commands:
-  - name: "Server logs"
-    cmd: "tail -f /var/log/server.log"
-  - name: "Tests"
-    cmd: "npm test -- --watch"
+**Single Source of Truth:** `lib/menu-core.sh`
 
-# Menu options (for menu mode)
-menu:
-  - label: "Edit in emacs"
-    action: emacs
-    files: [...]
-  - label: "View with batcat"
-    action: batcat
-    files: [...]
-  - label: "Show logs"
-    action: tmux
-    commands: [...]
+Both entry points use the same menu logic:
+- `bin/claude-editor-hook` - Main Ctrl-G hook (Pattern 2)
+- `bin/claude-editor-menu` - Standalone menu command
 
-# Custom launcher script (for custom mode)
-custom_launcher: /path/to/custom-script.sh
+**Menu Definition:**
+```bash
+show_menu() {
+    local FILE="$1"
 
-# Metadata
-created_by: claude
-timestamp: 2025-10-29T14:30:00Z
-session_id: abc123
+    local MENU="Edit with Emacs:emacs -nw \"$FILE\"
+Edit with Vi:vi \"$FILE\"
+Edit with Nano:nano \"$FILE\"
+Open Terminal:open-terminal
+Recent Files:recent-files
+Detach:detach
+Enhance (Interactive):claude-spawn-interactive
+Enhance (Non-interactive):claude-enhance-auto"
+
+    # FZF selection → Command execution
+}
 ```
 
-## Launcher Interface
+**Benefits:**
+- Add menu option once → Available everywhere
+- Consistent behavior across entry points
+- Easy to maintain and extend
 
-All launchers follow the same interface:
+## Session Persistence
 
-**Input**:
-- Context file path as argument: `launcher-emacs.sh ~/.claude/editor-context.yaml`
-- Or parsed values from wrapper
+**Pattern:** Always use tmux session named "Claude"
 
-**Output**:
-- Launch appropriate tool (emacs, batcat, fzf, tmux)
-- Block until user exits
-- Exit code 0 on success
+**Lifecycle:**
+1. First Ctrl-G: Creates session "Claude" with menu
+2. User detaches or completes action → Returns to Claude Code
+3. Next Ctrl-G: Reattaches to existing "Claude" session
+4. Windows persist between invocations
 
-**Responsibilities**:
-- Parse context file (or receive parsed data)
-- Validate required fields
-- Launch tool with correct arguments
-- Handle errors gracefully
+**Implementation:**
+```bash
+SESSION_NAME="Claude"
 
-## Directory Structure
-
-```
-claude-editor-hook/
-├── bin/
-│   └── claude-editor-hook       # Main entry point (symlinked to ~/.local/bin)
-├── lib/
-│   ├── config-reader.sh         # Parse YAML/JSON with yq/jq
-│   ├── launcher-emacs.sh        # Emacs launcher
-│   ├── launcher-batcat.sh       # Batcat launcher
-│   ├── launcher-menu.sh         # fzf/dialog menu
-│   ├── launcher-tmux.sh         # tmux orchestration
-│   └── utils.sh                 # Shared utilities
-├── templates/
-│   └── context-schema.yaml      # Example for Claude to reference
-└── memory-bank/
-    └── ...                       # Documentation
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    # Respawn window 1 with fresh menu
+    tmux respawn-window -t "$SESSION_NAME:1" -k bash -c "$MENU_CMD"
+    # Attach to session
+    exec tmux attach -t "$SESSION_NAME"
+else
+    # Create new session with menu
+    exec tmux new-session -s "$SESSION_NAME" bash -c "$MENU_CMD"
+fi
 ```
 
-## Key Design Decisions
+**Why simple session name:**
+- No project-based hashing complexity
+- Easy to understand and debug
+- User can create additional windows for parallel work
+- Type `menu` from any window to reopen palette
 
-**YAML over JSON**: More human-readable, easier for Claude to write, supports comments
-
-**Bash for MVP**: Fast to iterate, no dependencies beyond standard tools (yq, jq)
-
-**Launcher Plugins**: Each launcher is independent script, easy to add new ones
-
-**Context File Location**: `~/.claude/editor-context.yaml` is well-known location Claude can write to
-
-**Graceful Fallback**: If context file doesn't exist or is invalid, fall back to plain emacs
-
-## Parallel Instance Pattern (Ctrl+G Hijacking)
-
-**The Meta-Pattern**: Hijacking Claude Code's Ctrl+G editor hook to spawn parallel Claude instances that communicate via shared files.
-
-### How It Works (The Weird Part)
-
-**Normal Claude Code Ctrl+G flow:**
-1. User hits Ctrl+G → Opens `$EDITOR` on prompt file
-2. User edits in editor → Saves and closes
-3. Editor process terminates → Claude Code recaptures control
-4. Edited prompt appears in chat input
-
-**What we're doing (Ctrl+G hijacking):**
-1. Set `$EDITOR` to our wrapper script (`claude-editor-hook`)
-2. User hits Ctrl+G → Claude Code spawns wrapper with temp prompt file
-3. Wrapper launches tmux session with command palette
-4. User can choose various actions, including "Enhance (Interactive)"
-5. This spawns a **parallel Claude instance** (not child/subagent - full interactive instance)
-6. Parallel instance has access to the prompt file ({{FILE}})
-7. Parallel instance investigates, modifies the file, then exits
-8. When parallel instance exits → tmux closes → wrapper terminates
-9. **Claude Code captures file contents** on editor process termination
-10. File contents appear as next prompt in TUI input
-
-**Key insight:** The prompt file is a **write-only communication channel** from parallel instance to Claude Code's TUI. The parent Claude instance never reads the file - Claude Code itself captures it when the editor process ends.
-
-### What Makes This Different from Subagents
-
-- **Not a subagent**: This is a full interactive Claude instance (you could hit Ctrl+G again from it)
-- **File-based communication**: Parallel instance writes to file → Claude Code TUI reads on process exit
-- **Process lifecycle**: Control flow managed by process termination, not API calls
-- **Parallel not hierarchical**: More like spawning a coworker than delegating to a child
-- **One-way channel**: Parallel instance → File → Claude Code TUI (parent instance never sees the file)
-
-### Example Flow
-
-**User's rough input:**
-```
-Fix auth
-```
-
-**After enhancement agent:**
-```markdown
-Fix authentication bug in website/src/middleware/auth.ts:42
-
-Context:
-- Issue: editor-hook-85 (Auth middleware failing on token refresh)
-- Related files:
-  - website/src/middleware/auth.ts:42 (token validation logic)
-  - website/src/lib/supabase.ts:108 (client initialization)
-- Recent commit 29a4906 touched auth flow
-- Pattern: Use supabase.auth.getSession() not getUser() for middleware
-
-Implementation:
-1. Update auth.ts:42 to use getSession() instead of getUser()
-2. Add null check for session.user
-3. Update error handling to return 401 with proper message
-```
-
-### Benefits
-
-- **Reduces cognitive load**: User types minimal prompt, parallel instance enhances it
-- **Better first-time execution**: Next Claude session has all needed context upfront
-- **Investigative separation**: Enhancement work happens in separate context window
-- **Iterative refinement**: Can hit Ctrl+G multiple times to refine prompt before submitting
-- **Context efficiency**: Parent session stays clean, investigation happens elsewhere
-
-### Pattern 2: FZF Command Palette
-
-Pattern 2 provides an extensible FZF-based menu with multiple capabilities:
-
-**Menu Options:**
-- **Edit with Emacs/Vi/Nano** - Open prompt file in chosen editor
-- **Open Terminal** - Drop into bash with `$PROMPT` env var set
-- **Recent Files** - Query mem-sqlite for last 25 files touched by Claude
-- **Detach** - Exit cleanly back to Claude Code
-- **Enhance (Interactive/Non-interactive)** - Spawn parallel Claude instance
-
-### Recent Files Integration (mem-sqlite)
+## Recent Files Integration (JSONL-Based)
 
 **Overview:**
-The "Recent Files" menu option queries the mem-sqlite database to show the last 25 files Claude touched in recent sessions, enabling quick access to recently read/edited files without searching.
+Direct JSONL parsing replaces mem-sqlite dependency, providing zero-config Recent Files access with intelligent caching.
 
 **Architecture:**
 ```
 User selects "Recent Files"
   ↓
-Query mem-sqlite database (~/. local/share/memory-sqlite/claude_code.db)
+lib/scripts/query-recent-files-jsonl.sh
   ↓
-Extract file_path from tool_uses where toolName IN ('Read', 'Edit', 'Write')
+Read ~/.claude/projects/<project>/calls/*.jsonl
   ↓
-Show FZF picker with batcat preview
+Parse Read/Edit/Write tool invocations with jq
   ↓
-User selects file → Open with emacs
+Cache results in lib/cache/recent-files-*.json
+  ↓
+FZF picker with batcat preview
+  ↓
+User selects → View/Edit choice
 ```
 
-**SQL Query Design:**
-```sql
-SELECT DISTINCT
-  json_extract(tu.parameters, '$.file_path') AS file_path,
-  MAX(tu.created) AS last_touched
-FROM tool_uses tu
-WHERE
-  tu.toolName IN ('Read', 'Edit', 'Write')
-  AND json_extract(tu.parameters, '$.file_path') IS NOT NULL
-  AND json_extract(tu.parameters, '$.file_path') != ''
-GROUP BY file_path
-ORDER BY last_touched DESC
-LIMIT 25;
+**Parsing Strategy:**
+```bash
+# Extract file paths from JSONL tool_use blocks
+jq -r 'select(.type == "tool_use") |
+       select(.name == "Read" or .name == "Edit" or .name == "Write") |
+       .input.file_path' calls/*.jsonl
+
+# Group by file path, keep most recent timestamp
+# Return top 25 files
 ```
+
+**Caching Logic:**
+- First run: ~1s (parses last 5000 lines from each JSONL)
+- Subsequent runs: <100ms (cached until JSONL mtimes change)
+- Cache key: Combined modification times of source JSONL files
+- Cache location: `lib/cache/recent-files-<project-hash>.json`
+
+**Benefits over mem-sqlite:**
+- Zero external dependencies
+- Always current (reads actual session logs)
+- No daemon management required
+- Better performance with caching
+- Simpler architecture
 
 **Implementation Files:**
-- `lib/scripts/query-recent-files.sh` - Bash wrapper for SQLite query
-- `bin/claude-editor-hook` lines 78-110 - FZF menu handler
-- Database: `~/.local/share/memory-sqlite/claude_code.db`
+- `lib/scripts/query-recent-files-jsonl.sh` - JSONL parser with caching
+- `lib/cache/` - Per-project cache storage
+- `lib/menu-core.sh` lines 49-91 - Menu integration
 
-**Requirements:**
-- mem-sqlite must be installed and synced: `cd ~/code/mem-sqlite && npm run cli sync`
-- batcat for file previews (falls back gracefully if missing)
+## Subagent Context Package System
 
-**Features:**
-- FZF fuzzy search across file paths
-- Live preview with syntax highlighting (batcat)
-- Graceful error handling for missing database
-- Handles non-existent files (historical paths)
+**Overview:**
+When spawning interactive Claude instances ("Enhance Interactive"), automatically create context packages with parent conversation history, tool usage, and recent files.
 
-### Implementation (Pattern 2)
-
-When user selects "Enhance (Interactive)" from the fzf menu:
-
-```bash
-# Load prompt template and substitute file path
-PROMPT_TEMPLATE="$SCRIPT_DIR/../lib/prompts/enhancement-agent.txt"
-PROMPT=$(sed "s|{{FILE}}|$FILE|g" "$PROMPT_TEMPLATE")
-
-tmux new-window
-tmux send-keys "cndsp '$PROMPT'" Enter
+**Context Package Structure:**
+```
+/tmp/claude-subagent-{PID}/
+├── system-prompt.txt     # Instructions + output file path
+├── parent-context.md     # Last 15 conversation turns
+├── recent-files.txt      # 25 most recently touched files
+└── meta.json            # Metadata (working dir, timestamps)
 ```
 
-**Template file** (`lib/prompts/enhancement-agent.txt`):
-The template now accurately describes the parallel instance reality - you're not just an "enhancement agent", you're a parallel Claude instance communicating via file-based IPC. See the template file for current instructions.
+**Parent Context Format:**
+```markdown
+## USER
+[user message]
 
-**Why use a template file:**
-- Easy to edit and iterate on parallel instance instructions
-- Separates instance behavior from bash script logic
-- Enables customization without touching code
-- Reusable pattern for different parallel instance jobs
-- Template variables (currently `{{FILE}}`) can be extended as needed
+## ASSISTANT
+[assistant response]
 
-### Beyond Prompt Enhancement: The Design Space
+**Tools Used:**
+- `Read` → /path/to/file.js
+- `Edit` → /path/to/modified.ts
+- `Bash` → Command description
+- `Grep` → Pattern: search_term
+```
 
-While the current template focuses on "investigate and enhance prompt", the parallel instance pattern enables much more:
+**Generation Process:**
+1. Extract last 15 conversation turns from JSONL logs
+2. Parse tool_use blocks to extract file operations
+3. Query recent files list (reuses JSONL parsing)
+4. Create temp directory with all context files
+5. Launch Claude with system prompt pointing to output file
 
-**One-shot data collection:**
-- "Copy the last 100 server logs into the prompt"
-- "Grab browser console errors and write to prompt"
-- "Get the current git diff and add to prompt"
+**Implementation Files:**
+- `lib/scripts/create-subagent-context.sh` - Orchestrates package creation
+- `lib/scripts/extract-parent-context.sh` - Parses JSONL conversation history
+- `lib/menu-core.sh` lines 99-125 - Integration with "Enhance (Interactive)"
 
-**Command execution + piping:**
-- User describes desired bash command → Parallel instance executes → Pipes output to prompt file
-- Example: "Show me all TODOs in the codebase" → Instance runs grep → Writes results to file
+**Benefits:**
+- Subagents understand conversation context
+- Know what files were recently touched
+- See what tools were used (Read/Edit/Bash/etc)
+- File-based interface (no shell escaping issues)
+- Clean separation of concerns
 
-**Multi-step investigation:**
-- Gather context from multiple sources (logs, code, issues)
-- Synthesize and summarize
-- Write findings back to parent
+## Parallel Instance Pattern (The Core Mechanism)
 
-**Interactive debugging:**
-- Parent asks question → Parallel instance investigates → Writes answer
-- Could even spawn multiple parallel instances for different investigation paths
+**Key Insight:** The Ctrl-G hook creates a bidirectional communication channel:
+- Parent → Parallel: Via prompt file contents (initial state)
+- Parallel → Claude Code TUI: Via prompt file (final state when process exits)
 
-**Context management efficiency:**
-- Main instance stays clean (minimal context usage)
-- Parallel instances do heavy investigation work
-- Only summarized findings return to parent
+**Critical Detail:** The parent Claude instance never reads the file. When the parallel instance exits, **Claude Code itself** captures the file contents and populates the TUI prompt input.
 
-See **editor-hook-12** (P1) for designing a flexible template system that supports these diverse use cases.
+**Flow:**
+1. Parent Claude receives user input
+2. User hits Ctrl-G → Claude Code spawns `$EDITOR` with temp file
+3. Our hook intercepts, shows menu
+4. User chooses "Enhance (Interactive)"
+5. New Claude instance spawns with:
+   - System prompt explaining mechanism
+   - Parent context (conversation + tools + files)
+   - Access to prompt file path
+6. Parallel instance investigates, enhances, writes to file
+7. Parallel instance exits → Hook process terminates
+8. Claude Code captures file contents
+9. Enhanced prompt appears in parent's TUI input
 
-### The Template Abstraction Question (editor-hook-15)
+**What This Enables:**
+- Investigation in separate context window
+- Parent session stays clean (context efficiency)
+- Iterative refinement (can Ctrl-G multiple times)
+- Rich enhancement (subagent has conversation context)
 
-**Core architectural decision:** What should the template tell the parallel instance?
+**Not a Subagent:**
+- Full interactive Claude instance (could Ctrl-G from it)
+- File-based IPC (not API delegation)
+- Process lifecycle management (not hierarchical)
+- Parallel not child-parent relationship
 
-**Current state:** Template is **prescriptive** - tells instance to "investigate and enhance prompt"
-**Problem:** Too narrow for the diverse use cases the pattern enables
+## Directory Structure (Current)
 
-**Four design options:**
+```
+claude-editor-hook/
+├── bin/
+│   ├── claude-editor-hook         # Main entry point (Pattern 2)
+│   ├── claude-editor-menu         # Standalone menu
+│   └── claude-editor-hook.backup-patterns  # Legacy patterns
+├── lib/
+│   ├── menu-core.sh              # Unified menu system ← Core
+│   ├── nested-tmux.conf          # Tmux config for nested sessions
+│   ├── cache/                    # JSONL parsing cache
+│   │   └── recent-files-*.json
+│   └── scripts/
+│       ├── query-recent-files-jsonl.sh       # JSONL parser
+│       ├── query-recent-files.sh             # mem-sqlite (legacy)
+│       ├── create-subagent-context.sh        # Context packages
+│       └── extract-parent-context.sh         # JSONL conversation parser
+├── memory-bank/
+│   └── ...                       # Documentation
+├── install.sh                    # Installation with git metadata
+└── README.md                     # User documentation
+```
 
-**Option 1: Minimal Informational (leading candidate)**
-- Template explains the mechanism only
-- "You're a parallel instance, {{FILE}} is your return channel, use it however you need"
-- Parallel instance is fully interactive - user chats naturally with it
-- Maximum flexibility, minimal constraints
+## Key Design Decisions
 
-**Option 2: Task-Based Templates**
-- Multiple templates: `lib/prompts/enhance.txt`, `execute.txt`, `investigate.txt`
-- Each prescribes different job type
-- Menu options map to specific templates
-- More structure, easier to optimize per-task
+**FZF Command Palette over YAML Orchestration:**
+- Original vision: Claude writes YAML files → Launcher dispatches
+- Reality: Interactive menu proved more flexible and user-controlled
+- YAML pattern deferred, may revisit if use cases emerge
 
-**Option 3: Template with Parameters**
-- Single template with variables: `{{FILE}}`, `{{TASK}}`, `{{CONTEXT}}`
-- Wrapper passes task description as parameter
-- Template interpolates task into instructions
-- Structured but flexible
+**Direct JSONL Parsing over mem-sqlite:**
+- Eliminates external daemon dependency
+- Always current (reads actual session logs)
+- Caching provides better performance
+- Simpler architecture, fewer moving parts
 
-**Option 4: Hybrid**
-- Minimal base explaining mechanism
-- Optional task overlay passed as additional context
-- Best of both: flexibility + structure when needed
+**Unified Menu System:**
+- Single source of truth (`lib/menu-core.sh`)
+- Consistent behavior across entry points
+- Easy to extend with new options
 
-**Key insight:** The parallel instance pattern is fundamentally an **"escape hatch to fresh Claude context with write-to-TUI mechanism"**. Everything else (what the instance does) is application-specific.
+**Simple Session Persistence:**
+- Always use session named "Claude"
+- No project-based hashing
+- User can create additional windows
+- Clean, understandable model
 
-**Template's true job:**
-1. Explain you're in a parallel instance (not parent, not subagent)
-2. Identify the communication channel ({{FILE}} → Claude Code TUI on exit)
-3. Clarify the lifecycle (read input → do work → write output → exit → TUI captures)
-4. NOT prescribe what "do work" means
+**Subagent Context Packages:**
+- File-based IPC (avoids shell escaping)
+- Auto-generated on spawn
+- Rich context (conversation + tools + files)
+- Clean separation of concerns
 
-**Critical mechanism detail:** The file is not read by the parent Claude instance. When the parallel instance exits, Claude Code itself captures the file contents and populates the TUI prompt input with that string. This is the standard editor-save-close behavior that we're hijacking.
+## Extensibility Model
 
-**Design tension:**
-- **Too directive** → Limits use cases, requires multiple templates or complex logic
-- **Too minimal** → Parallel instance might not understand task, waste tokens exploring
-- **Sweet spot** → Explain mechanism + trust instance to read task from file/context
+**Adding Menu Options:**
 
-**Current lean:** Option 1 (minimal informational) with task description written to {{FILE}} by parent or user.
+Edit `lib/menu-core.sh` menu definition:
+```bash
+local MENU="Edit with Emacs:emacs -nw \"$FILE\"
+...
+New Option:new-command"
+```
 
-**Next steps:**
-- Draft minimal informational template
-- Test with different use cases (enhance, execute, investigate)
-- Measure if parallel instance "gets it" without directive guidance
-- Document patterns that emerge
+Add command handler in case statement:
+```bash
+case "$cmd" in
+    new-command)
+        # Implementation
+        ;;
+esac
+```
 
-### Related Issues
+**Examples of Future Options:**
+- Git operations (`git log | fzf`)
+- Log streaming (`tail -f /var/log/app.log`)
+- Database queries
+- Test runners (`npm test --watch`)
+- Browser DevTools integration
 
-- **editor-hook-15**: Explore template abstraction (P1) - This architectural decision
-- **editor-hook-10**: Update enhancement-agent.txt to reflect parallel instance reality (P2)
-- **editor-hook-12**: Design flexible template system (P1) - Implementation of chosen approach
-- **editor-hook-13**: Add "Execute Command & Pipe" menu option (P2) - Test case for flexibility
-- editor-hook-19: Prompt enhancement agent implementation
-- editor-hook-14: Use Claude CLI for dynamic menu options
-- editor-hook-16: Drawer-style popup with Claude CLI
+## Related Explorations
 
-## Future Enhancements
+**Multi-Agent Orchestration (Research):**
+- See `memory-bank/01-architecture/multi-agent-orchestration-exploration.md`
+- Persistent specialized agents (Planning, Coding, Testing)
+- Chief of Staff delegation pattern
+- Status: Speculative, not implemented
 
-**MCP Integration**: Create MCP tool for Claude to write context files directly (no file I/O)
+**YAML Context System (Deferred):**
+- Original vision documented in command-palette-paradigm.md
+- Archived to history - command palette proved sufficient
+- May revisit if multi-file opening use cases emerge
 
-**Session History**: Track context files over time, allow replay
+## Performance Characteristics
 
-**Smart Defaults**: If no context file, inspect git diff and open changed files
+**Recent Files:**
+- First query: ~1s (JSONL parsing)
+- Cached queries: <100ms
+- Cache invalidation: On JSONL mtime change
 
-**Browser Integration**: Capture browser console logs, show in launcher
+**Context Packages:**
+- Generation time: ~500ms (15 messages + recent files)
+- Minimal overhead for spawning subagents
 
-**Multi-project**: Context files per project in `.claude/editor-context.yaml`
+**Session Persistence:**
+- Session creation: ~200ms
+- Session reattach: ~50ms
+- No noticeable delay in Ctrl-G flow

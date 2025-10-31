@@ -166,8 +166,8 @@ Enhance (Non-interactive):claude-enhance-auto"
             local CONTEXT_DIR="/tmp/claude-subagent-lite-$$"
             bash "$SCRIPT_DIR/scripts/create-subagent-context-lite.sh" "$FILE" "$CONTEXT_DIR"
 
-            # Call claude with context package via system prompt
-            claude -p --verbose --output-format stream-json --dangerously-skip-permissions --model haiku --append-system-prompt "$(cat "$CONTEXT_DIR/system-prompt.txt")" | bash "$STREAM_PARSER"
+            # Call claude with context package (system prompt + user prompt)
+            cat "$CONTEXT_DIR/user-prompt.txt" | claude -p --verbose --output-format stream-json --dangerously-skip-permissions --model haiku --append-system-prompt "$(cat "$CONTEXT_DIR/system-prompt.txt")" | bash "$STREAM_PARSER"
 
             echo ""
             echo "Press Enter to return to Claude Code..."

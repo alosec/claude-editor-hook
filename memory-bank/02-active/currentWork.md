@@ -1,168 +1,135 @@
-# Current Work: mem-sqlite Recent Files Integration (Completed with Caveats)
+# Current Work: Streaming Output Enhancement
 
-**Status**: ✅ Feature complete, ⚠️ Requires daemon setup
+**Status**: ✅ COMPLETE
+**Date**: 2025-10-31
 
-**Branch**: `feature/mem-sqlite-recent-files`
+## This Session's Focus
 
-## This Session's Work
+**Streaming Output for Non-Interactive Enhancement (Completed)**
 
-**Completed: mem-sqlite Recent Files Integration (editor-hook-16)**
+Fixed the non-interactive enhancement agent to show live streaming output instead of a blinking cursor. Users can now see real-time progress as Claude investigates and enhances prompts.
 
-Successfully integrated mem-sqlite database querying into the FZF command palette, adding a "Recent Files" option that shows the last 25 files Claude touched across all sessions.
+**What We Shipped:**
+- ✅ Created `lib/scripts/stream-claude-output.sh` - NDJSON parser with visual formatting
+- ✅ Updated `menu-core.sh` to use `--output-format stream-json`
+- ✅ Added colored icons for different tool types (📖 Read, ✍️ Write, 🔍 Grep, ⚡ Bash, etc.)
+- ✅ Shows Claude's thinking messages and tool usage in real-time
+- ✅ Completion summary with duration, token count, and cost
 
-### What We Built
+**Previous Session: Memory Bank Refresh (Oct 31)**
+- ✅ Archived three completed sessions to `04-history/sessions/2025-10/`
+- ✅ Refreshed `00-core/projectbrief.md` - Now describes working command palette
+- ✅ Rewrote `01-architecture/systemPatterns.md` - Documents current architecture
+- ✅ Archived `command-palette-paradigm.md` - Original vision now historical reference
+- ✅ Updated `02-active/` files - Blockers, currentWork, nextUp
 
-**Core Feature:**
-- New "Recent Files" menu option in Pattern 2 FZF palette
-- Queries mem-sqlite database for tool_uses (Read/Edit/Write operations)
-- FZF picker with full-height layout and batcat syntax-highlighted preview
-- Graceful error handling when database is missing
+## Current Project State (Oct 2025)
 
-**Technical Implementation:**
-- SQL query using `json_extract()` to parse tool parameters
-- Bash wrapper script: `lib/scripts/query-recent-files.sh`
-- Symlink-aware path resolution (handles `~/.local/bin/claude-editor-hook` → actual location)
-- FZF layout: 100% height, preview on top (up:70%)
+**What's Working:**
+- ✅ FZF command palette with 8 options
+- ✅ Persistent "Claude" tmux session
+- ✅ Unified menu system (lib/menu-core.sh)
+- ✅ JSONL-based Recent Files with caching
+- ✅ Subagent context packages (conversation + tools + files)
+- ✅ Terminal workspace with `$PROMPT` env var
+- ✅ Interactive and non-interactive enhancement agents
 
-**Files Created/Modified:**
-- `lib/scripts/query-recent-files.sh` (new) - SQL query wrapper
-- `bin/claude-editor-hook` (lines 44-51, 78-110) - Symlink resolution + Recent Files handler
-- `memory-bank/01-architecture/systemPatterns.md` - Architecture documentation
-- `README.md` - Feature documentation
+**Recent Completions:**
+- **Oct 31**: Streaming output for non-interactive enhancement (real-time progress)
+- **Oct 31**: Memory bank refresh (documentation cleanup)
+- **Oct 30**: JSONL migration (eliminated mem-sqlite dependency)
+- **Oct 30**: Menu unification (single source of truth)
+- **Oct 30**: Context packages (rich parent context for subagents)
+- **Oct 29**: Session persistence (simple "Claude" session pattern)
+- **Oct 29**: Recent Files integration
 
-### Beads Issues Closed (8 total)
+## Architecture Snapshot
 
-- ✅ editor-hook-17 (P0): Setup mem-sqlite dependencies and run initial sync
-- ✅ editor-hook-18 (P1): Design and test SQL query for recent files
-- ✅ editor-hook-19 (P1): Create query wrapper script
-- ✅ editor-hook-20 (P1): Add Recent Files option to Pattern 2 FZF menu
-- ✅ editor-hook-21 (P2): File action submenu (deferred - direct open works well)
-- ✅ editor-hook-22 (P2): Error handling for missing database
-- ✅ editor-hook-23 (P2): Testing with real data
-- ✅ editor-hook-16 (P2): Parent issue
+**Entry Point:** `bin/claude-editor-hook` (Pattern 2)
+**Core Logic:** `lib/menu-core.sh` (unified menu)
+**Helper Scripts:**
+- `query-recent-files-jsonl.sh` - JSONL parser with caching
+- `create-subagent-context.sh` - Context package generation
+- `extract-parent-context.sh` - Conversation history extraction
+- `stream-claude-output.sh` - Stream-json parser with visual output (NEW)
 
-**Average lead time**: 0.5 hours
+**Key Patterns:**
+1. **Ctrl-G Interception** - Hook `$EDITOR` to show FZF menu
+2. **Session Persistence** - Always use tmux session named "Claude"
+3. **JSONL Parsing** - Direct log parsing with intelligent caching
+4. **Context Packages** - Auto-generated parent context for subagents
+5. **File-based IPC** - Parallel instances communicate via prompt file
 
-### Current Issue: Stale Database (editor-hook-25, P0)
+## Theoretical Exploration: Multi-Agent Orchestration
 
-**Problem:**
-Recent Files shows files from psyt-finance-dash (worked on weeks ago) instead of current claude-editor-hook session files.
+**Document:** `memory-bank/01-architecture/multi-agent-orchestration-exploration.md`
 
-**Root Cause:**
-The database is **correct but stale**. mem-sqlite was synced once at 7:19:31. At that moment, psyt-finance-dash files were genuinely the most recent. Current session started after sync, so its tool_uses aren't in the database yet.
+**Status:** Purely speculative thought experiment, not actively planned
 
-**Evidence:**
+**Idea:** Transform persistent "Claude" session into a multi-agent runtime with orchestrated specialized agents (Planning, Coding, Testing) coordinated by a Chief of Staff pattern.
+
+**Reality Check:** Likely more complexity than value. Current manual spawning via command palette works well. The orchestration overhead (coordinator process, agent lifecycle tracking, status synchronization, error handling) probably isn't justified by usage patterns.
+
+**Decision:** Not pursuing unless clear pain points emerge from real usage that this would solve.
+
+## Recent Commits (Last Week)
+
 ```
-Database newest timestamp: 2025-10-30 07:19:31
-Current time: 2025-10-30 07:27:42 (8 minutes later)
-Current session tool_uses: NOT IN DATABASE
+53dcb19 feat: Enhance Recent Files with path truncation and view/edit choice
+95cfb08 Merge feature/unify-menu-system: Unified menu with shared core
+6dead6b feat: Add subagent context package system with rich parent context
+a954dce feat: Replace mem-sqlite with JSONL-based Recent Files
+66e76c4 feat: Add session persistence to Pattern 2 (editor-hook-2)
 ```
-
-The query is working correctly - it's showing the most recent data available. The data is just outdated.
-
-**Solution:**
-This is a **deployment/setup issue**, not a code bug. mem-sqlite needs to run as a continuous daemon:
-
-```bash
-cd ~/code/mem-sqlite && npm run cli start
-```
-
-This keeps the database current with sub-second latency.
-
-**Scope:**
-Out of scope for current feature branch. Needs:
-1. Documentation in README about daemon requirement
-2. Possibly: systemd service or background startup script
-3. Possibly: Auto-sync fallback if daemon not running
-4. Possibly: Visual indicator of database staleness in menu
-
-See **editor-hook-25** for detailed analysis and solution options.
-
-## SQL Query Design (Working Correctly)
-
-```sql
-SELECT DISTINCT
-  json_extract(tu.parameters, '$.file_path') AS file_path,
-  MAX(tu.created) AS last_touched
-FROM tool_uses tu
-WHERE
-  tu.toolName IN ('Read', 'Edit', 'Write')
-  AND json_extract(tu.parameters, '$.file_path') IS NOT NULL
-  AND json_extract(tu.parameters, '$.file_path') != ''
-GROUP BY file_path
-ORDER BY last_touched DESC
-LIMIT 25;
-```
-
-**Query validates correctly:**
-- Extracts `file_path` from JSON `parameters` field using SQLite's `json_extract()`
-- Filters to file operation tools (Read/Edit/Write have `file_path` parameter)
-- Deduplicates with `DISTINCT` + `GROUP BY`
-- Orders by `MAX(created)` to get most recent touch per file
-- Limits to 25 for manageable FZF menu
-
-**Tested against real database with 48,501 tool uses - performs well.**
-
-## Architecture: Pattern 2 FZF Command Palette
-
-Pattern 2 now includes 8 menu options:
-1. Edit with Emacs
-2. Edit with Vi
-3. Edit with Nano
-4. Open Terminal (with `$PROMPT` env var)
-5. **Recent Files** (mem-sqlite query) ← NEW
-6. Detach (exit to Claude Code)
-7. Enhance (Interactive) - spawn parallel Claude instance
-8. Enhance (Non-interactive) - auto-enhancement with Haiku
-
-**Layout:** Full-height FZF (100%), clean and responsive.
 
 ## What's Next
 
-### Immediate (P0)
-1. **editor-hook-25**: Resolve stale database issue
-   - Document daemon requirement in README
-   - Consider auto-sync fallback
-   - Add staleness indicator?
+**Immediate:**
+1. ✅ Memory bank refresh complete
+2. Use the tool in real sessions, note what's useful vs what's not
 
-### Then (P1)
-1. **editor-hook-15**: Explore template abstraction (minimal informational vs directive)
-2. **editor-hook-2**: Implement persistent "Claude" session (simple approach)
+**Short-term:**
+1. Test working features against real usage patterns
+2. Identify pain points or missing capabilities
+3. Consider extensions to menu (git ops, log streaming, etc.)
 
-### Future (P2)
-1. **editor-hook-24**: Documentation update (blocked by editor-hook-25)
-2. Context file reading - Parse `~/.claude/editor-context.yaml`
-3. MCP tool for context writing
+**Future Possibilities (Not Actively Planned):**
+- YAML context system (if multi-file use cases emerge)
+- MCP integration for context writing
+- Browser DevTools integration
+- Multi-agent orchestration (interesting theory, probably overkill)
 
-## Key Learnings
+## Key Learnings (Recent Sessions)
 
-**Symlink Resolution:**
-Using `BASH_SOURCE[0]` and iteratively following symlinks is critical when script is installed via symlink to `~/.local/bin/`.
+**JSONL Parsing > mem-sqlite:**
+- Direct parsing eliminates daemon dependency
+- Caching provides better performance
+- Simpler architecture, fewer moving parts
+- Always current (reads actual logs)
 
-**FZF Preview Layouts:**
-- `--preview-window=right:60%` - Side-by-side (good for wide terminals)
-- `--preview-window=up:70%:wrap` - Stacked (better for narrow terminals, more vertical space)
+**Unified Menu System:**
+- Single source of truth prevents divergence
+- Easy to extend with new options
+- Consistent behavior across entry points
 
-**mem-sqlite Architecture:**
-- ETL pipeline: JSONL → SQLite transformation
-- Real-time sync requires daemon, not one-shot
-- Database size grows linearly with conversation history (310MB for moderate usage)
-- Query performance excellent even with 48K+ rows
+**Simple Session Persistence:**
+- Always "Claude" session beats project-based hashing
+- Clean, understandable model
+- User can create additional windows
 
-**Orchestrated Subagent Workflow:**
-Planning agent → Granular Beads issues → Execution. Highly effective for well-defined features.
+**Context Packages:**
+- File-based IPC avoids shell escaping complexity
+- Rich context (conversation + tools + files) makes subagents genuinely useful
+- Auto-generation on spawn keeps it frictionless
 
 ## Session Stats
 
-- Time: ~2 hours (planning + implementation + documentation)
-- Issues closed: 8
-- Files created: 1
-- Files modified: 4
-- Lines of SQL: 13
-- Lines of Bash: 64
-- Database size: 310MB
-- Tool uses analyzed: 48,501
+**Memory Bank Update:**
+- Files created: 3 (archived sessions)
+- Files modified: 3 (projectbrief, systemPatterns, currentWork)
+- Files moved: 1 (command-palette-paradigm → history)
+- Documentation lines: ~800 written
 
 ---
 
-**Note:** Feature is functional and ready to merge pending resolution of editor-hook-25 (documentation of daemon requirement).
+**Note:** Memory bank now accurately reflects working implementation vs aspirational vision. Future updates should maintain this accuracy.

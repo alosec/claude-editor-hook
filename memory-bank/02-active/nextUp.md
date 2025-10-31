@@ -1,89 +1,148 @@
 # Next Up: Prioritized Tasks
 
-**Updated**: 2025-10-30
+**Updated**: 2025-10-31
 
-## Top 10 Tasks
+## Current State Summary
 
-### 1. Explore template abstraction (Priority 1) - editor-hook-15 🔥 CURRENT FOCUS
-**The core architectural question:** What should the template tell parallel instances?
+The project is **feature-complete for current use cases**. All planned features are working:
+- ✅ FZF command palette
+- ✅ Session persistence
+- ✅ Recent Files (JSONL-based)
+- ✅ Subagent context packages
+- ✅ Terminal workspace
+- ✅ Enhancement agents
 
-Options:
-1. Minimal informational - explain mechanism, maximize flexibility
-2. Task-based templates - multiple specialized templates
-3. Template with parameters - {{TASK}} and {{CONTEXT}} variables
-4. Hybrid - minimal base + task overlay
+**Next steps depend on actual usage patterns and pain points.**
 
-**Current lean:** Option 1 (minimal informational)
+## Top Priorities
 
-**Next steps:**
-- Draft minimal informational template
-- Test with different use cases (enhance, execute-command, investigate)
-- Document decision and rationale
+### 1. Usage Validation (Priority 0) 🔥
 
-### 2. Design flexible template system (Priority 1) - editor-hook-12
-**Follows from editor-hook-15**. Once we know the right abstraction, implement the system:
-- lib/prompts/ directory structure
-- Variable substitution mechanism
-- How to pass additional context beyond {{FILE}}
+**Before building more features, validate current functionality.**
 
-### 3. Implement simple persistent "Claude" session (Priority 1) - editor-hook-2
-**NEW SIMPLE APPROACH**:
-- Always use session named "Claude"
-- Check if exists → attach, else create → attach
-- Keep menu alias functionality
-- No project-based hashing complexity
+**Tasks:**
+- Use command palette in real Claude Code sessions for 1-2 weeks
+- Identify actual pain points vs theoretical improvements
+- Note which menu options get used vs ignored
+- Measure if Recent Files provides real value
+- Test if enhancement agents save time vs manual prompting
 
-### 4. Update enhancement-agent.txt to reflect parallel instance reality (Priority 2) - editor-hook-10
-**Blocked by editor-hook-15**. Once abstraction is decided, update current template to match.
+**Decision point:** Build what's needed, not what's interesting.
 
-### 5. Add "Execute Command & Pipe" menu option (Priority 2) - editor-hook-13
-**Test case for template flexibility**. User describes command → parallel instance executes → pipes to {{FILE}}. Proves the pattern works beyond prompt enhancement.
+### 2. Validate What's Actually Useful (Priority 1)
 
-### 6. Generalize Claude prompt enhancement pattern (Priority 2) - editor-hook-4
-Create reusable pattern for spawning enhancement agents. Interactive and non-interactive modes both working, need to document pattern for future extensions.
+**Tasks:**
+- Use Recent Files - Does it actually save time vs manual file opening?
+- Use Enhancement Agents - Do they improve prompt quality or just add friction?
+- Use Terminal workspace - Is `$PROMPT` env var useful in practice?
+- Note which menu options get ignored
 
-### 7. Fix session numbering (Priority 2) - editor-hook-3
-**Will be resolved by #3**: Currently sessions increment on each Ctrl-G. Persistence will solve this.
+**Goal:** Build what's needed, remove what's not.
 
-### 8. Context file reading (Priority 2)
-Parse `~/.claude/editor-context.yaml` to open multiple files at specific line numbers. Foundation for multi-file workflows.
+### 3. Menu Extensions Based on Real Needs (Priority 2)
 
-### 9. MCP Tool for Context Writing (Priority 2)
-Create an MCP server that gives Claude a tool to write context files directly (no file I/O). Makes Claude's job easier and faster.
+**Potential additions if usage shows demand:**
 
-### 10. Smart Fallback Mode (Priority 2)
-When no context file exists, inspect `git diff` and automatically open changed files. Useful default behavior.
+**Git Integration:**
+- `git log | fzf` - Fuzzy search commit history
+- `git diff | batcat` - Syntax-highlighted diffs
+- Branch switcher with FZF
 
-## Additional High-Priority Tasks
+**Log Streaming:**
+- `tail -f /var/log/app.log` in tmux pane
+- Browser console log capture
+- Filter logs by pattern
 
-### Log Streaming Integration (Priority 3)
-Add ability to tail server logs, browser console, or any command output directly in the launcher.
+**Test Runner:**
+- `npm test -- --watch` in persistent window
+- Test file navigator
+- Failure-focused test runs
 
-### Git Diff Launcher (Priority 3)
-Show diffs side-by-side in ediff or similar. Claude can specify which commits/branches to compare.
+**Database Queries:**
+- SQL query interface
+- Schema browser
+- Query history
 
-### Browser DevTools Integration (Priority 3)
-Capture and display browser console logs, network requests, or DOM state. Requires browser extension or CDP integration.
+**Beads Integration:**
+- `bd ready | fzf` - Pick issue to work on
+- Quick issue creation from menu
+- Status updates
 
-## Additional Tasks (Lower Priority)
+**Rule:** Only add if real usage demands it, not for completeness.
 
-- **Session History & Replay** (P3): Track context files over time, allow replay
-- **Per-Project Context Files** (P4): Support `.claude/editor-context.yaml` in project roots
+### 4. Documentation Polish (Priority 3)
 
-## Future Ideas (Not Prioritized)
+**Tasks:**
+- Add GIFs/screenshots to README showing features
+- Write usage guide (when to use each menu option)
+- Document common workflows
+- Create troubleshooting section
 
-- **AI-Generated Context**: Claude analyzes error messages and automatically prepares context with relevant files
-- **Diff Highlighting**: When opening files, show only the lines that changed since last commit
-- **Multi-User Coordination**: Share context files with team, "open what Alice was looking at"
-- **Recording Mode**: Record all context changes during a debugging session, create timeline
-- **Integration with Other Tools**: VS Code, Jupyter notebooks, database query tools, etc.
+**Blocked by:** Need real usage patterns to document accurately.
 
-## Dependencies
+## Deferred / Low Priority
 
-- **MCP tool** requires understanding MCP SDK (probably Node.js or Python)
-- **Browser integration** needs browser extension architecture
-- **Tmux launcher** needs tmux installed and basic scripting knowledge
+### Template Abstraction (editor-hook-15)
 
-## Notes
+**Original question:** Should templates be informational or directive?
 
-Focus on MVP first. The real value comes from seeing it work in a real Claude Code session, then iterating based on actual usage patterns.
+**Current reality:** The one template works fine. Premature to abstract.
+
+**Decision:** Defer until we have 3+ distinct use cases that need different templates.
+
+### YAML Context File System
+
+**Original vision:** Claude writes YAML files → Launcher opens multiple files at line numbers
+
+**Current reality:** Command palette proved more flexible.
+
+**Decision:** Deferred indefinitely. May revisit if multi-file opening use cases emerge from real usage.
+
+### MCP Integration
+
+**Vision:** MCP tool for Claude to write context files directly (no file I/O).
+
+**Blocker:** No clear use case given current command palette approach.
+
+**Decision:** Deferred until we identify need for programmatic context file creation.
+
+### Browser Integration
+
+**Vision:** Capture browser console logs, network requests, DOM state.
+
+**Complexity:** Requires browser extension or CDP integration.
+
+**Decision:** Interesting but speculative. Defer until clear need emerges.
+
+## Recently Completed (Archive Reference)
+
+These were in nextUp.md but are now complete:
+
+- ✅ **editor-hook-16** - Recent Files integration (completed via JSONL)
+- ✅ **editor-hook-2** - Session persistence (simple "Claude" session)
+- ✅ **editor-hook-15** - Template abstraction (deferred - not needed yet)
+- ✅ **Unified menu system** - lib/menu-core.sh (Oct 30)
+- ✅ **Subagent context packages** - Parent context awareness (Oct 30)
+- ✅ **JSONL migration** - Replaced mem-sqlite (Oct 30)
+
+## Key Principle
+
+**Build for real needs, not theoretical completeness.**
+
+The project is feature-complete for the command palette paradigm. Further development should be driven by:
+1. Actual usage pain points
+2. Measurable time savings
+3. Clear workflow improvements
+
+Avoid building features "because we can" or "for completeness."
+
+## Next Session Actions
+
+1. **Use the tool** - Work with Claude Code using the command palette
+2. **Take notes** - What's useful? What's missing? What's awkward?
+3. **Measure impact** - Does Recent Files save time? Do enhancement agents help?
+4. **Decide** - Build what's needed, defer what's not
+
+---
+
+**Note:** This is a working tool, not a research project. Let real usage guide development.

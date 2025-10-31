@@ -15,11 +15,13 @@
 - Interactive + non-interactive prompt enhancement
 - Configurable via `~/.claude-editor-hook.conf` (set `PATTERN=2`)
 
-**📋 Planned:**
-- Enhanced history viewer - "Better Ctrl-O" that parses ~/.claude/projects for rich activity view (editor-hook-22)
-- Context file system for multi-file opening (editor-hook-3)
-- Multi-pane tmux layouts with logs (editor-hook-13)
-- MCP tool for Claude to write context files (editor-hook-7)
+**📋 Future Exploration (Not Actively Planned):**
+- Menu extensions based on real usage needs (git ops, log streaming, test runners)
+- Enhanced history viewer - "Better Ctrl-O" parsing ~/.claude/projects
+- Context file system for multi-file opening (may revisit if use cases emerge)
+- Multi-pane tmux layouts with logs
+- MCP tool for Claude to write context files
+- Multi-agent orchestration (interesting theory, likely overkill)
 
 ## What Is This?
 
