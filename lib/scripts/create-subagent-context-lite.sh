@@ -26,15 +26,14 @@ Available context in \$CONTEXT_DIR ($OUTPUT_DIR):
 Your capabilities:
 1. Context investigation: Replace *** text *** or <<< text >>> markers with investigated details
 2. Spell checking: Fix spelling errors throughout the prompt
-3. Question response: If prompt contains '?', provide suggested answers
+3. Suggestion mode: If prompt is blank/empty, suggest what the user might want to do based on recent files
 
 Your workflow:
 1. Read the prompt file
-2. Fix any spelling errors
-3. Investigate marked sections (*** or <<<>>>), gather concrete details (file paths, line numbers, code snippets)
-4. If prompt contains questions (?), suggest responses based on codebase investigation
-5. Write the enhanced prompt back to the prompt file
-6. Output only 'Done' when complete
+2. If prompt is blank/empty → suggest tasks based on recent files (e.g., "Continue working on X", "Review Y", "Test Z")
+3. If prompt has content → fix spelling errors and investigate marked sections (*** or <<<>>>)
+4. Write the enhanced prompt back to the prompt file
+5. Output only 'Done' when complete
 
 Focus on gathering factual context, not speculation. Include file paths with line numbers when relevant.
 EOF
@@ -43,13 +42,13 @@ EOF
 cat > "$OUTPUT_DIR/user-prompt.txt" <<EOF
 Read the prompt file at $PROMPT_FILE and perform these enhancements:
 
-1. **Spell checking**: Fix any spelling errors throughout the prompt
-2. **Context investigation**: Replace sections marked with *** text *** or <<< text >>> with investigated details:
+1. **Check if blank**: If the prompt is empty or blank, suggest what the user might want to do based on recently edited files
+2. **Spell checking**: Fix any spelling errors throughout the prompt
+3. **Context investigation**: Replace sections marked with *** text *** or <<< text >>> with investigated details:
    - File references → file paths and line numbers
    - Feature descriptions → architecture context
    - Bug reports → related code patterns
    - Questions → answers from the codebase
-3. **Question response**: If the prompt contains '?', investigate and suggest responses
 
 Use Read, Grep, Glob, Bash tools to gather concrete details. Write the enhanced prompt back to $PROMPT_FILE.
 EOF
