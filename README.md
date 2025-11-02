@@ -119,11 +119,13 @@ When spawning interactive Claude instances (Ctrl-G → "Enhance (Interactive)"),
 ## Example Use Cases
 
 **✅ Prompt Enhancement (Working Now)**:
-- You write: `"Update ***README*** to clarify what's real vs aspirational"`
+- You write: `#enhance\nAdd dark mode support`
 - Hit Ctrl-G → Choose "Enhance (Non-interactive)"
-- Claude + Haiku investigates codebase, finds actual implementation status
-- Rewrites prompt with specific file paths, line numbers, and context
+- Haiku investigates codebase, finds theme system patterns
+- Rewrites prompt with file paths (src/styles/theme.ts:42), architectural context
 - Returns to main Claude session with enhanced prompt
+
+**Available directives**: #enhance, #spellcheck, #suggest, #investigate, #fix, #please <custom>
 
 **✅ Interactive Enhancement with Context Package (Working Now)**:
 - Hit Ctrl-G → Choose "Enhance (Interactive)"

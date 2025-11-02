@@ -24,3 +24,6 @@ Thumbs.db
 # Logs
 *.log
 lib/cache/*.json
+
+# Public posts (draft content)
+public-posts/

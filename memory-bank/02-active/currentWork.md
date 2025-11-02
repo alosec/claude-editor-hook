@@ -1,20 +1,27 @@
-# Current Work: Streaming Output Enhancement
+# Current Work: Directive-Based Enhancement System
 
 **Status**: ✅ COMPLETE
-**Date**: 2025-10-31
+**Date**: 2025-11-02
 
 ## This Session's Focus
 
-**Streaming Output for Non-Interactive Enhancement (Completed)**
+**Directive System for Prompt Enhancement (Completed)**
 
-Fixed the non-interactive enhancement agent to show live streaming output instead of a blinking cursor. Users can now see real-time progress as Claude investigates and enhances prompts.
+Replaced the old `*** marker ***` pattern with an explicit hashtag directive system that gives users clear control over enhancement types.
 
 **What We Shipped:**
+- ✅ Directive system: #enhance, #spellcheck, #suggest, #investigate, #fix, #please
+- ✅ Updated `lib/scripts/create-subagent-context-lite.sh` - System and user prompts
+- ✅ Updated README.md and public Reddit post with directive examples
+- ✅ Deprecated Pattern 9 (old standalone enhancement)
+- ✅ Updated all documentation to reflect new directive capabilities
+- ✅ Token-efficient design: context files read on-demand by Haiku
+
+**Previous Session: Streaming Output Enhancement (Oct 31)**
 - ✅ Created `lib/scripts/stream-claude-output.sh` - NDJSON parser with visual formatting
 - ✅ Updated `menu-core.sh` to use `--output-format stream-json`
-- ✅ Added colored icons for different tool types (📖 Read, ✍️ Write, 🔍 Grep, ⚡ Bash, etc.)
-- ✅ Shows Claude's thinking messages and tool usage in real-time
-- ✅ Completion summary with duration, token count, and cost
+- ✅ Added colored icons for different tool types
+- ✅ Real-time progress display with completion summary
 
 **Previous Session: Memory Bank Refresh (Oct 31)**
 - ✅ Archived three completed sessions to `04-history/sessions/2025-10/`
@@ -59,6 +66,7 @@ Fixed the non-interactive enhancement agent to show live streaming output instea
 3. **JSONL Parsing** - Direct log parsing with intelligent caching
 4. **Context Packages** - Auto-generated parent context for subagents
 5. **File-based IPC** - Parallel instances communicate via prompt file
+6. **Directive System** - Hashtag-based enhancement control (#enhance, #spellcheck, etc.)
 
 ## Theoretical Exploration: Multi-Agent Orchestration
 

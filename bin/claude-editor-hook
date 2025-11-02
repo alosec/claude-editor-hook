@@ -240,40 +240,11 @@ EOF
         ;;
 
     9)
-        # Pattern 9: Non-interactive prompt enhancement with claude -p + Haiku
-        echo "Pattern 9: Non-interactive prompt enhancement" >> "$LOG"
-
-        # Check if file has enhancement markers (*** or <<<>>>)
-        if grep -qE '\*\*\*.*\*\*\*|<<<.*>>>' "$FILE"; then
-            echo "Found enhancement markers, calling claude -p" >> "$LOG"
-
-            # Create temp file for enhanced output
-            ENHANCED=$(mktemp)
-
-            # Pass file content to claude -p with enhancement instructions
-            claude -p --model haiku "$(cat <<'PROMPT'
-You are enhancing a prompt for Claude Code. The user has marked sections with *** or <<< >>> that need investigation and expansion.
-
-Read the prompt below and look for sections marked with *** text *** or <<< text >>>.
-For each marked section, use Read, Grep, Bash tools to investigate and gather context.
-Replace marked sections with specific findings: file paths, line numbers, issue IDs, code patterns.
-
-Output ONLY the enhanced prompt with markers replaced. No explanations, no meta-commentary.
-
-Here is the prompt to enhance:
-PROMPT
-            )" "$(cat "$FILE")" > "$ENHANCED" 2>> "$LOG"
-
-            if [ $? -eq 0 ] && [ -s "$ENHANCED" ]; then
-                echo "Enhancement successful, updating file" >> "$LOG"
-                mv "$ENHANCED" "$FILE"
-            else
-                echo "Enhancement failed, keeping original" >> "$LOG"
-                rm -f "$ENHANCED"
-            fi
-        else
-            echo "No enhancement markers found, skipping enhancement" >> "$LOG"
-        fi
+        # Pattern 9: DEPRECATED - Old standalone enhancement pattern
+        # NOTE: This pattern is deprecated. Use Pattern 2 (FZF menu) instead.
+        # Pattern 2 provides "Enhance (Non-interactive)" which uses the new
+        # directive system (#enhance, #spellcheck, #suggest, etc.)
+        echo "Pattern 9: DEPRECATED - Use Pattern 2 instead" >> "$LOG"
 
         # Don't open editor - return directly to Claude Code
         ;;

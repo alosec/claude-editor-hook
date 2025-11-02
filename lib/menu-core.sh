@@ -158,7 +158,8 @@ Enhance (Non-interactive):claude-enhance-auto"
             ;;
 
         claude-enhance-auto)
-            # Non-interactive enhancement - auto-replace *** markers *** with context
+            # Non-interactive enhancement - directive-based enhancement system
+            # Supports: #enhance, #spellcheck, #suggest, #investigate, #fix, #please
             # Uses lightweight context package pattern optimized for Haiku
             local STREAM_PARSER="$SCRIPT_DIR/scripts/stream-claude-output.sh"
 

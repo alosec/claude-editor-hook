@@ -54,6 +54,12 @@ User selection executes → Returns to Claude Code when done
 - **File-based IPC** - Clean interface, no shell escaping issues
 - **Auto-generated** - Context package created automatically on spawn
 
+### Directive-Based Enhancement System
+- **Explicit Control** - Use hashtag directives (#enhance, #spellcheck, #suggest, #investigate, #fix, #please)
+- **Token Efficient** - Context stored as files, Haiku reads on-demand
+- **Flexible** - Multiple directives per prompt, freeform #please requests
+- **Smart Defaults** - No directive → spellcheck, blank prompt → suggest next steps
+
 ### Workspace Features
 - **Terminal Access** - `$PROMPT` env var points to prompt file
 - **Menu Alias** - Type `menu` to reopen command palette
@@ -75,10 +81,11 @@ User selection executes → Returns to Claude Code when done
 ## Use Cases (Working Now)
 
 **Prompt Enhancement:**
-- Hit Ctrl-G → "Enhance (Interactive)"
-- Claude subagent opens with full conversation context
-- Investigates codebase, rewrites prompt with specifics
-- Exit returns enhanced prompt to parent session
+- Write prompt with directives: `#enhance\nAdd dark mode support`
+- Hit Ctrl-G → "Enhance (Non-interactive)"
+- Haiku investigates codebase with context awareness
+- Returns enhanced prompt with file paths, line numbers, patterns
+- Supports: #enhance, #spellcheck, #suggest, #investigate, #fix, #please
 
 **Recent Files Access:**
 - Hit Ctrl-G → "Recent Files"
