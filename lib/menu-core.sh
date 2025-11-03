@@ -226,7 +226,7 @@ Detach:detach"
                 --border \
                 --reverse \
                 --preview="$preview_cmd" \
-                --preview-window=right:60%:wrap)
+                --preview-window=up:70%:wrap)
 
             rm -f "$COMBINED_LIST"
 
