@@ -138,9 +138,26 @@ The zombie problem taught us: any session-creating system needs cleanup. Our sol
 
 - bd-19: Update ~/.claude/commands/new-command.md to use 'new-command' not 'spawn' (P2)
 
+## Final Cleanup (2025-11-03)
+
+After 4 days of real-world usage, Pattern 2 (FZF menu) proved to be the definitive architecture. Performed final consolidation:
+
+**Code simplification:**
+- Removed patterns 1, 3-9 from `bin/claude-editor-hook` (reduced from 258 lines to 52 lines)
+- Removed config file system (`.claude-editor-hook.conf`, `EDITOR_HOOK_PATTERN` env var)
+- Pattern 2 is now the only implementation - clean and simple
+
+**Documentation archival:**
+- Moved `MENU_PATTERNS.md` to `memory-bank/04-history/2025-10-early-exploration/`
+- Moved `PATTERN_USAGE.md` to `memory-bank/04-history/2025-10-early-exploration/`
+- Moved `EXPLORATION.md` to `memory-bank/04-history/2025-10-early-exploration/`
+- Updated README to remove pattern selection instructions
+
+**Result:** The codebase now reflects reality - one proven pattern, zero configuration complexity, maximum clarity.
+
 ## Related Docs
 
 - `ARCHITECTURE.md` - Complete technical reference
-- `memory-bank/01-architecture/command-palette-paradigm.md` - Original vision
-- `MENU_PATTERNS.md` - Historical 9-pattern research
+- `memory-bank/01-architecture/systemPatterns.md` - Current architecture
+- `memory-bank/04-history/2025-10-early-exploration/` - Archived exploration docs
 - `README.md` - Updated user-facing docs

@@ -4,16 +4,16 @@
 
 ## Current Status
 
-✅ **Working and Simple** - Pattern 2 with FZF menu.
+✅ **Working and Simple** - FZF command palette with persistent sessions.
 
 **✅ Working Now:**
-- FZF command palette with 8 options
+- FZF command palette with 8+ options
 - Edit with Emacs/Vi/Nano (returns to Claude Code when done)
 - **Open Terminal** (full shell with `$PROMPT` env var set to temp file path)
 - **Recent Files** - Query JSONL logs for last 25 files Claude touched (with intelligent caching)
 - **Subagent Context Package** - Spawn Claude instances with rich parent context (conversation + tools + files)
 - Interactive + non-interactive prompt enhancement
-- Configurable via `~/.claude-editor-hook.conf` (set `PATTERN=2`)
+- Universal command palette accessible from any terminal via `menu` or `m` commands
 
 **📋 Future Exploration (Not Actively Planned):**
 - Menu extensions based on real usage needs (git ops, log streaming, test runners)
@@ -201,35 +201,11 @@ ln -s ~/code/claude-editor-hook/bin/claude-editor-hook ~/.local/bin/
 
 ## Usage
 
-### Configuration
-
-**Pattern Selection:** Choose which menu pattern to use:
-
-```bash
-# Set pattern via environment variable (default: 1)
-export EDITOR_HOOK_PATTERN=2  # Use FZF menu (recommended)
-
-# Or create project-level config
-echo 'PATTERN=2' > .claude-editor-hook.conf
-
-# Or create global config
-echo 'PATTERN=2' > ~/.claude-editor-hook.conf
-```
-
-**Available Patterns:**
-- Pattern 1: Simple emacs exec
-- **Pattern 2: FZF menu (recommended)** - Command palette with extensible options
-- Patterns 3-8: Experimental menu approaches
-- Pattern 9: Non-interactive enhancement (auto-detects markers)
-
 ### Manual Testing
 
 ```bash
 # Test the menu
 claude-editor-hook /tmp/test-file
-
-# Test with a specific pattern
-EDITOR_HOOK_PATTERN=2 claude-editor-hook /tmp/test-file
 ```
 
 ### With Claude Code
@@ -251,20 +227,16 @@ You: [hits Ctrl-G]
 
 ## Architecture
 
-See [memory-bank/01-architecture/command-palette-paradigm.md](memory-bank/01-architecture/command-palette-paradigm.md) for the architectural vision.
+See [memory-bank/01-architecture/systemPatterns.md](memory-bank/01-architecture/systemPatterns.md) for complete architecture documentation.
 
 **Current structure:**
-- `bin/claude-editor-hook` - Monolithic script with 8+ pattern implementations (276 lines)
-- Pattern 2 (lines 39-74) - FZF menu, the main extensibility point
+- `bin/claude-editor-hook` - Main entry point (~50 lines)
+- `lib/menu-core.sh` - Unified menu system with all options
+- `lib/scripts/` - Helper scripts for recent files, context packages, etc.
 - `install.sh` - Installation script with git metadata tracking
 
-**Planned structure** (not yet implemented):
-- `lib/config-reader.sh` - Parse YAML context files (📋 planned)
-- `lib/launcher-*.sh` - Plugin launchers (📋 planned)
-- `templates/context-schema.yaml` - Example context file (📋 planned)
-
 **Extensibility Model:**
-Pattern 2's FZF menu is the settled architecture. Add new capabilities by editing the `MENU` variable:
+Add new capabilities by editing `lib/menu-core.sh`. The menu definition is a simple list:
 
 ```bash
 MENU="Display Text:command-to-execute
@@ -273,19 +245,19 @@ Third Option:inline bash code"
 ```
 
 Currently implemented menu options:
-- `Edit with Emacs:emacs -nw "$FILE"`
-- `Edit with Vi:vi "$FILE"`
-- `Edit with Nano:nano "$FILE"`
-- `Enhance (Interactive):claude-spawn-interactive` - Spawns new Claude window
-- `Enhance (Non-interactive):claude-enhance-auto` - Uses `claude -p` with Haiku
+- Edit with Emacs/Vi/Nano
+- Open Terminal (with $PROMPT env var)
+- Recent Files (JSONL-based with caching)
+- Project Switcher (fuzzy search ~/code)
+- Find Files (recursive fd search)
+- Git Operations (status, log, branches)
+- Enhancement agents (interactive and non-interactive)
 
 **Future menu options could include:**
-- **Enhanced history viewer** - Parse `~/.claude/projects` to show last 10-20 files read/edited/created/deleted in recent calls (replaces Ctrl-O with rich, filterable view)
-- Git operations (`git log | fzf`)
 - Log streaming (`tail -f /var/log/app.log`)
 - Test runners (`npm test --watch`)
 - Database queries
-- API testing tools
+- Beads issue browser
 
 ### The "Better Ctrl-O" Vision
 
