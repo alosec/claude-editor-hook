@@ -1,20 +1,27 @@
-# Current Work: Directive-Based Enhancement System
+# Current Work: Universal Command Palette
 
 **Status**: ✅ COMPLETE
-**Date**: 2025-11-02
+**Date**: 2025-11-03
 
 ## This Session's Focus
 
-**Directive System for Prompt Enhancement (Completed)**
+**Universal Command Palette with CLI Access (Completed)**
 
-Replaced the old `*** marker ***` pattern with an explicit hashtag directive system that gives users clear control over enhancement types.
+Evolved from Claude-specific editor hook to general-purpose command palette accessible from any terminal via simple `menu` or `m` commands. Context-aware menu shows Claude tools when in session, general productivity tools otherwise.
 
 **What We Shipped:**
+- ✅ Universal command palette with CLI access (`menu` or `m` commands)
+- ✅ Context-aware menu system (detects Claude session vs general tmux)
+- ✅ Project switcher: fuzzy search ~/code with fd, cd or new window
+- ✅ File finder: recursive search with batcat preview
+- ✅ Git operations submenu: status, log browser, branch switcher
+- ✅ Helper scripts: find-projects.sh, find-files.sh, git-menu.sh
+- ✅ Updated claude-editor-menu to work without PROMPT requirement
+- ✅ Bash aliases: menu and m in ~/.bashrc
+
+**Previous Session: Directive-Based Enhancement System (Nov 2)**
 - ✅ Directive system: #enhance, #spellcheck, #suggest, #investigate, #fix, #please
-- ✅ Updated `lib/scripts/create-subagent-context-lite.sh` - System and user prompts
-- ✅ Updated README.md and public Reddit post with directive examples
-- ✅ Deprecated Pattern 9 (old standalone enhancement)
-- ✅ Updated all documentation to reflect new directive capabilities
+- ✅ Replaced old *** marker *** pattern with explicit hashtag directives
 - ✅ Token-efficient design: context files read on-demand by Haiku
 
 **Previous Session: Streaming Output Enhancement (Oct 31)**
@@ -83,23 +90,24 @@ Replaced the old `*** marker ***` pattern with an explicit hashtag directive sys
 ## Recent Commits (Last Week)
 
 ```
-53dcb19 feat: Enhance Recent Files with path truncation and view/edit choice
-95cfb08 Merge feature/unify-menu-system: Unified menu with shared core
-6dead6b feat: Add subagent context package system with rich parent context
-a954dce feat: Replace mem-sqlite with JSONL-based Recent Files
-66e76c4 feat: Add session persistence to Pattern 2 (editor-hook-2)
+267097e fix: Allow claude-editor-menu to work without PROMPT (general CLI access)
+5ae9648 feat: Transform into universal tmux command palette with Alt-g access
+bc4cc62 feat: Replace *** markers with directive-based enhancement system
+17c532b chore: Add untracked files - streaming output script and memory bank docs
+afde04d refactor: Remove custom user prompt and approval step for cleaner flow
 ```
 
 ## What's Next
 
 **Immediate:**
-1. ✅ Memory bank refresh complete
-2. Use the tool in real sessions, note what's useful vs what's not
+1. **Refine project switcher** (editor-hook-38) - Enhance UX, add recent projects, better preview
+2. Test command palette in real usage, gather feedback
+3. Consider additional menu options based on actual needs
 
 **Short-term:**
-1. Test working features against real usage patterns
-2. Identify pain points or missing capabilities
-3. Consider extensions to menu (git ops, log streaming, etc.)
+1. Improve project switcher workflow
+2. Add recent projects tracking
+3. Configurable search paths for project discovery
 
 **Future Possibilities (Not Actively Planned):**
 - YAML context system (if multi-file use cases emerge)

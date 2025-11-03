@@ -1,43 +1,45 @@
 # Next Up: Prioritized Tasks
 
-**Updated**: 2025-10-31
+**Updated**: 2025-11-03
 
 ## Current State Summary
 
-The project is **feature-complete for current use cases**. All planned features are working:
-- ✅ FZF command palette
-- ✅ Session persistence
-- ✅ Recent Files (JSONL-based)
-- ✅ Subagent context packages
-- ✅ Terminal workspace
-- ✅ Enhancement agents
+Universal command palette is **working and accessible via CLI**. Recent additions:
+- ✅ CLI access via `menu` or `m` commands
+- ✅ Context-aware menu system
+- ✅ Project switcher (fuzzy ~/code)
+- ✅ File finder (fd with preview)
+- ✅ Git operations (status, log, branches)
 
-**Next steps depend on actual usage patterns and pain points.**
+**Next focus: Refine project switcher based on real usage.**
 
 ## Top Priorities
 
-### 1. Usage Validation (Priority 0) 🔥
+### 1. Refine Project Switcher (Priority 1) 🔥
 
-**Before building more features, validate current functionality.**
+**Issue**: editor-hook-38
+
+**Current state:** Basic fuzzy search of ~/code with fd, option to cd or open new window.
+
+**Improvements to explore:**
+- Track recently accessed projects (like Recent Files)
+- Better preview (show git branch, last commit, file count)
+- Configurable search paths (not just ~/code)
+- Auto-detect git repositories
+- Show project metadata (language, framework, last modified)
+
+**Decision point:** Test current implementation first, add features based on actual needs.
+
+### 2. Usage Validation (Priority 1)
 
 **Tasks:**
-- Use command palette in real Claude Code sessions for 1-2 weeks
-- Identify actual pain points vs theoretical improvements
-- Note which menu options get used vs ignored
-- Measure if Recent Files provides real value
-- Test if enhancement agents save time vs manual prompting
+- Test project switcher in real workflow
+- Use file finder - Does fd performance work well?
+- Test git operations on various repos
+- Gather feedback on menu organization
+- Note which features get used vs ignored
 
-**Decision point:** Build what's needed, not what's interesting.
-
-### 2. Validate What's Actually Useful (Priority 1)
-
-**Tasks:**
-- Use Recent Files - Does it actually save time vs manual file opening?
-- Use Enhancement Agents - Do they improve prompt quality or just add friction?
-- Use Terminal workspace - Is `$PROMPT` env var useful in practice?
-- Note which menu options get ignored
-
-**Goal:** Build what's needed, remove what's not.
+**Goal:** Validate the new general-purpose features work as expected.
 
 ### 3. Menu Extensions Based on Real Needs (Priority 2)
 
