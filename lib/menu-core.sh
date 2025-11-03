@@ -168,21 +168,93 @@ Detach:detach"
             ;;
 
         switch-project)
-            # Project switcher - fuzzy find in ~/code
+            # Project switcher - recent projects stacked on top of fuzzy find results
             local FIND_PROJECTS="$SCRIPT_DIR/scripts/find-projects.sh"
-            local selected_project=$(bash "$FIND_PROJECTS" | fzf --height=100% --prompt='Switch to Project: ' --border --reverse --preview="ls -la {}")
+            local QUERY_RECENT_PROJECTS="$SCRIPT_DIR/scripts/query-recent-projects-jsonl.sh"
+            local TRACK_PROJECT_ACCESS="$SCRIPT_DIR/scripts/track-project-access.sh"
+
+            # Build combined project list: recent projects with ★ prefix, then separator, then all projects
+            local COMBINED_LIST="/tmp/project-list-$$"
+            > "$COMBINED_LIST"
+
+            # Add recent projects with ★ prefix (suppress errors if no recent projects yet)
+            if bash "$QUERY_RECENT_PROJECTS" 2>/dev/null | while IFS= read -r project; do
+                echo "★ $project"
+            done >> "$COMBINED_LIST"; then
+                # Add separator if we have recent projects
+                if [ -s "$COMBINED_LIST" ]; then
+                    echo "───────────────────────────" >> "$COMBINED_LIST"
+                fi
+            fi
+
+            # Add all projects from ~/code
+            bash "$FIND_PROJECTS" >> "$COMBINED_LIST"
+
+            # Enhanced preview with git metadata
+            local preview_cmd='
+                # Remove ★ prefix and separator lines
+                project_path=$(echo {} | sed "s/^★ //")
+                if [[ "$project_path" == "───"* ]]; then
+                    echo "Recent Projects Above"
+                    echo "────────────────────"
+                    echo "All Projects Below"
+                    exit 0
+                fi
+
+                # Show basic ls output
+                echo "═══════════════════════════════════════════"
+                ls -la "$project_path" 2>/dev/null | head -20
+                echo ""
+
+                # Show git info if available
+                if [ -d "$project_path/.git" ]; then
+                    cd "$project_path" 2>/dev/null || exit 0
+                    echo "═══════════════════════════════════════════"
+                    echo "Git Repository"
+                    echo "═══════════════════════════════════════════"
+                    echo "Branch: $(git branch --show-current 2>/dev/null || echo detached)"
+                    echo "Last commit: $(git log -1 --format="%s (%ar)" 2>/dev/null || echo "No commits")"
+                    echo ""
+                    echo "Recent commits:"
+                    git log -5 --oneline --format="%C(yellow)%h%C(reset) %s %C(green)(%ar)%C(reset)" 2>/dev/null || echo "No commit history"
+                fi
+            '
+
+            local selected_project=$(cat "$COMBINED_LIST" | fzf \
+                --height=100% \
+                --prompt='Switch to Project: ' \
+                --border \
+                --reverse \
+                --preview="$preview_cmd" \
+                --preview-window=right:60%:wrap)
+
+            rm -f "$COMBINED_LIST"
 
             if [ -n "$selected_project" ]; then
+                # Skip if user selected the separator
+                if [[ "$selected_project" == "───"* ]]; then
+                    return 0
+                fi
+
+                # Remove ★ prefix if present
+                selected_project=$(echo "$selected_project" | sed 's/^★ //')
+
                 # Offer choice: cd here or open new window
                 local action=$(echo -e "CD to project (current window)\nOpen in new window" | fzf --height=40% --prompt='Action: ' --border --reverse)
 
                 case "$action" in
                     "CD to project (current window)")
+                        # Track project access
+                        bash "$TRACK_PROJECT_ACCESS" "$selected_project" 2>/dev/null || true
+
                         cd "$selected_project"
                         echo "Changed directory to: $selected_project"
                         exec bash
                         ;;
                     "Open in new window")
+                        # Track project access
+                        bash "$TRACK_PROJECT_ACCESS" "$selected_project" 2>/dev/null || true
+
                         tmux new-window -c "$selected_project" bash
                         ;;
                 esac
