@@ -26,8 +26,22 @@ show_menu() {
         # Claude-specific options (editing prompt, enhancement agents)
         MENU="Edit with Emacs:emacs -nw \"$FILE\"
 Edit with Vi:vi \"$FILE\"
-Edit with Nano:nano \"$FILE\"
-Open Terminal:open-terminal
+Edit with Nano:nano \"$FILE\""
+
+        # Add dynamic terminal list
+        # Query existing terminals and add to menu
+        local LIST_TERMINALS="$SCRIPT_DIR/scripts/list-terminals.sh"
+        if [ -f "$LIST_TERMINALS" ]; then
+            # Get list of terminals: "terminal-1:Terminal 1", "terminal-2:Terminal 2 (workspace)", etc.
+            while IFS=: read -r window_name display_label; do
+                MENU="$MENU
+$display_label:terminal:$window_name"
+            done < <(bash "$LIST_TERMINALS")
+        fi
+
+        # Add "Create New Terminal" option
+        MENU="$MENU
+Create New Terminal:create-new-terminal
 Recent Files (Claude):recent-files
 Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto
@@ -61,22 +75,38 @@ Detach:detach"
     fi
 
     # Extract command from selection
-    local cmd=$(echo "$choice" | cut -d: -f2)
+    # Handle special format for terminals: "Terminal 1:terminal:terminal-1"
+    # Standard format: "Edit with Emacs:emacs -nw file"
+    local cmd=$(echo "$choice" | cut -d: -f2-)
+
+    # If command starts with "terminal:", it's a terminal selection
+    # Keep the full "terminal:terminal-N" format for the case statement
 
     # Execute command
     case "$cmd" in
+        terminal:*)
+            # Switch to existing terminal
+            # Format: "terminal:terminal-1" or "terminal:terminal-2"
+            local window_name=$(echo "$cmd" | cut -d: -f2)
+            bash "$SCRIPT_DIR/scripts/switch-to-terminal.sh" "$window_name" "$FILE"
+            ;;
+
+        create-new-terminal)
+            # Create and switch to new terminal
+            local new_window=$(bash "$SCRIPT_DIR/scripts/create-terminal.sh" "$FILE")
+            if [ -n "$new_window" ]; then
+                # Switch to the newly created terminal
+                tmux select-window -t "Claude:$new_window"
+            fi
+            ;;
+
         open-terminal)
-            # Open terminal - set PROMPT env var and drop into bash
-            export PROMPT="$FILE"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Claude Editor Workspace"
-            echo "Type 'menu' to open command palette"
-            echo "Access prompt file: \$PROMPT"
-            echo "File: $PROMPT"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-            # Set up menu alias and launch bash with it available
-            exec bash --rcfile <(cat ~/.bashrc 2>/dev/null; echo 'alias menu="claude-editor-menu"')
+            # Legacy support - treat as "create new terminal"
+            # (In case anything still calls this directly)
+            local new_window=$(bash "$SCRIPT_DIR/scripts/create-terminal.sh" "$FILE")
+            if [ -n "$new_window" ]; then
+                tmux select-window -t "Claude:$new_window"
+            fi
             ;;
 
         recent-files)

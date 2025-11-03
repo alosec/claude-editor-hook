@@ -37,10 +37,10 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     # Update PROMPT environment variable for the session
     tmux set-environment -t "$SESSION_NAME" PROMPT "$FILE"
 
-    # Respawn window 1 with fresh menu (preserves other windows)
-    # Use select-window first to ensure window 1 exists, create if not
-    tmux select-window -t "$SESSION_NAME:1" 2>/dev/null || tmux new-window -t "$SESSION_NAME:1"
-    tmux respawn-window -t "$SESSION_NAME:1" -k bash -c "$MENU_CMD"
+    # Respawn window 0 with fresh menu (preserves other windows including terminals)
+    # Use select-window first to ensure window 0 exists, create if not
+    tmux select-window -t "$SESSION_NAME:0" 2>/dev/null || tmux new-window -t "$SESSION_NAME:0"
+    tmux respawn-window -t "$SESSION_NAME:0" -k bash -c "$MENU_CMD"
 
     # Attach to the session
     exec tmux -f "$NESTED_CONF" attach -t "$SESSION_NAME"
