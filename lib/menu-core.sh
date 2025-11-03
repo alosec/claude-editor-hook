@@ -264,7 +264,7 @@ Detach:detach"
         find-files)
             # File finder in current directory
             local FIND_FILES="$SCRIPT_DIR/scripts/find-files.sh"
-            local selected_file=$(bash "$FIND_FILES" | fzf --height=100% --prompt='Find File: ' --border --reverse --preview="batcat --color=always --style=numbers {}" --preview-window=right:60%:wrap)
+            local selected_file=$(bash "$FIND_FILES" | fzf --height=100% --prompt='Find File: ' --border --reverse --preview="batcat --color=always --style=numbers {}" --preview-window=up:70%:wrap)
 
             if [ -n "$selected_file" ]; then
                 # Offer choice: view or edit
