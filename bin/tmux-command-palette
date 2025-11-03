@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Universal tmux command palette - accessible from anywhere with Alt-g
+# Works in two contexts:
+# 1. Inside Claude session ($PROMPT set) - Shows Claude + general tools
+# 2. General tmux - Shows general productivity tools only
+
+# Get the directory where this script lives (to find lib/menu-core.sh)
+# Strategy: Follow symlinks to find actual installation
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
+while [ -L "$SCRIPT_SOURCE" ]; do
+    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+
+# menu-core.sh is in the lib/ directory next to bin/
+MENU_CORE="$SCRIPT_DIR/../lib/menu-core.sh"
+if [ ! -f "$MENU_CORE" ]; then
+    echo "Error: Cannot find lib/menu-core.sh at $MENU_CORE"
+    exit 1
+fi
+
+# Source the shared menu logic
+source "$MENU_CORE"
+
+# Show the menu
+# If $PROMPT is set (we're in a Claude session), it will show Claude options
+# Otherwise, it shows only general productivity tools
+show_menu

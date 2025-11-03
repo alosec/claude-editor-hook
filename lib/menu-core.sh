@@ -1,26 +1,59 @@
 #!/usr/bin/env bash
 # Shared menu logic for both claude-editor-hook and claude-editor-menu
 # This ensures menu options and behavior stay in sync
+# Now supports context-aware menus: Claude session vs general tmux
 
-# Usage: show_menu <file-path>
+# Usage: show_menu [file-path]
+# If file-path is provided, we're in Claude context
+# If omitted, we're in general tmux context
 show_menu() {
     local FILE="$1"
+    local IN_CLAUDE_CONTEXT=false
+
+    # Detect context: are we in a Claude session?
+    if [ -n "$FILE" ] || [ -n "$PROMPT" ]; then
+        IN_CLAUDE_CONTEXT=true
+        FILE="${FILE:-$PROMPT}"
+    fi
 
     # Get script directory for finding helper scripts
     local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    # Menu definition - single source of truth
-    local MENU="Edit with Emacs:emacs -nw \"$FILE\"
+    # Build context-aware menu
+    local MENU=""
+
+    if [ "$IN_CLAUDE_CONTEXT" = true ]; then
+        # Claude-specific options (editing prompt, enhancement agents)
+        MENU="Edit with Emacs:emacs -nw \"$FILE\"
 Edit with Vi:vi \"$FILE\"
 Edit with Nano:nano \"$FILE\"
 Open Terminal:open-terminal
-Recent Files:recent-files
-Detach:detach
+Recent Files (Claude):recent-files
 Enhance (Interactive):claude-spawn-interactive
-Enhance (Non-interactive):claude-enhance-auto"
+Enhance (Non-interactive):claude-enhance-auto
+──────────────────:separator"
+    fi
 
-    # Show FZF menu
-    local choice=$(echo "$MENU" | fzf --height=100% --prompt='Command: ' --border --reverse)
+    # General productivity options (always available)
+    MENU="${MENU}
+Switch Project:switch-project
+Find Files:find-files
+Git Operations:git-operations"
+
+    if [ "$IN_CLAUDE_CONTEXT" = true ]; then
+        MENU="${MENU}
+Detach:detach"
+    fi
+
+    # Show FZF menu with context-aware prompt
+    local prompt="Command: "
+    if [ "$IN_CLAUDE_CONTEXT" = true ]; then
+        prompt="Claude + Tools: "
+    else
+        prompt="Tmux Tools: "
+    fi
+
+    local choice=$(echo "$MENU" | grep -v "^──────" | fzf --height=100% --prompt="$prompt" --border --reverse)
 
     if [ -z "$choice" ]; then
         # User cancelled
@@ -132,6 +165,53 @@ Enhance (Non-interactive):claude-enhance-auto"
                 fi
             fi
             rm -f /tmp/recent-files-error.$$
+            ;;
+
+        switch-project)
+            # Project switcher - fuzzy find in ~/code
+            local FIND_PROJECTS="$SCRIPT_DIR/scripts/find-projects.sh"
+            local selected_project=$(bash "$FIND_PROJECTS" | fzf --height=100% --prompt='Switch to Project: ' --border --reverse --preview="ls -la {}")
+
+            if [ -n "$selected_project" ]; then
+                # Offer choice: cd here or open new window
+                local action=$(echo -e "CD to project (current window)\nOpen in new window" | fzf --height=40% --prompt='Action: ' --border --reverse)
+
+                case "$action" in
+                    "CD to project (current window)")
+                        cd "$selected_project"
+                        echo "Changed directory to: $selected_project"
+                        exec bash
+                        ;;
+                    "Open in new window")
+                        tmux new-window -c "$selected_project" bash
+                        ;;
+                esac
+            fi
+            ;;
+
+        find-files)
+            # File finder in current directory
+            local FIND_FILES="$SCRIPT_DIR/scripts/find-files.sh"
+            local selected_file=$(bash "$FIND_FILES" | fzf --height=100% --prompt='Find File: ' --border --reverse --preview="batcat --color=always --style=numbers {}" --preview-window=right:60%:wrap)
+
+            if [ -n "$selected_file" ]; then
+                # Offer choice: view or edit
+                local action=$(echo -e "View (batcat)\nEdit (emacs)" | fzf --height=40% --prompt='Action: ' --border --reverse)
+
+                case "$action" in
+                    "View (batcat)")
+                        batcat --paging=always "$selected_file"
+                        ;;
+                    "Edit (emacs)")
+                        emacs -nw "$selected_file"
+                        ;;
+                esac
+            fi
+            ;;
+
+        git-operations)
+            # Git operations submenu
+            bash "$SCRIPT_DIR/scripts/git-menu.sh"
             ;;
 
         detach)
