@@ -3,15 +3,11 @@
 # Called by:
 # 1. User typing 'menu' in terminal (alias set in Open Terminal option)
 # 2. Tmux keybinding (Ctrl-` from lib/nested-tmux.conf)
+# 3. User typing 'claude-editor-menu' from any terminal
 
 # Get the file path from environment variable set by "Open Terminal"
+# If not set, we're in general context (not inside Claude session)
 FILE="${PROMPT:-}"
-
-if [ -z "$FILE" ]; then
-    echo "Error: No prompt file found. This command should be run from within a Claude editor session."
-    echo "Hint: Use Ctrl-G in Claude Code, then choose 'Open Terminal' to access this menu."
-    exit 1
-fi
 
 # Get the directory where this script lives (to find lib/menu-core.sh)
 # Strategy: Find claude-editor-hook (which is symlinked), follow it to the repo
@@ -37,6 +33,13 @@ if [ ! -f "$MENU_CORE" ]; then
 fi
 source "$MENU_CORE"
 
-# Open menu in new tmux window within existing session
-# When the window closes, it automatically returns to the calling window
-tmux new-window "source '$MENU_CORE' && show_menu '$FILE'"
+# If we're in tmux, open menu in new window
+# Otherwise, just show menu directly
+if [ -n "$TMUX" ]; then
+    # Open menu in new tmux window within existing session
+    # When the window closes, it automatically returns to the calling window
+    tmux new-window "source '$MENU_CORE' && show_menu '$FILE'"
+else
+    # Not in tmux, just show menu directly
+    show_menu "$FILE"
+fi
