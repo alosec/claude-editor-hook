@@ -1,4 +1,4 @@
-# Claude Editor Hook
+# g-menu
 
 > A command palette for Claude Code that intercepts `Ctrl-G` to launch editors, tools, and specialized agents.
 
@@ -166,6 +166,7 @@ cd claude-editor-hook
 ./install.sh install
 
 # Update your shell config (~/.bashrc or ~/.zshrc)
+# Note: Keep 'claude-editor-hook' for backward compatibility
 export EDITOR="claude-editor-hook"
 
 # Reload your shell

@@ -10,23 +10,23 @@
 FILE="${PROMPT:-}"
 
 # Get the directory where this script lives (to find lib/menu-core.sh)
-# Strategy: Find claude-editor-hook (which is symlinked), follow it to the repo
-HOOK_BIN=$(which claude-editor-hook 2>/dev/null)
-if [ -z "$HOOK_BIN" ]; then
+# Strategy: Find g-menu (which is symlinked as claude-editor-hook), follow it to the repo
+GMENU_BIN=$(which claude-editor-hook 2>/dev/null)
+if [ -z "$GMENU_BIN" ]; then
     echo "Error: Cannot find claude-editor-hook in PATH"
     exit 1
 fi
 
-# Follow symlinks on claude-editor-hook to find actual installation
-while [ -L "$HOOK_BIN" ]; do
-    HOOK_DIR="$(cd -P "$(dirname "$HOOK_BIN")" && pwd)"
-    HOOK_BIN="$(readlink "$HOOK_BIN")"
-    [[ $HOOK_BIN != /* ]] && HOOK_BIN="$HOOK_DIR/$HOOK_BIN"
+# Follow symlinks to find actual installation
+while [ -L "$GMENU_BIN" ]; do
+    GMENU_DIR="$(cd -P "$(dirname "$GMENU_BIN")" && pwd)"
+    GMENU_BIN="$(readlink "$GMENU_BIN")"
+    [[ $GMENU_BIN != /* ]] && GMENU_BIN="$GMENU_DIR/$GMENU_BIN"
 done
-HOOK_DIR="$(cd -P "$(dirname "$HOOK_BIN")" && pwd)"
+GMENU_DIR="$(cd -P "$(dirname "$GMENU_BIN")" && pwd)"
 
 # menu-core.sh is in the lib/ directory next to bin/
-MENU_CORE="$HOOK_DIR/../lib/menu-core.sh"
+MENU_CORE="$GMENU_DIR/../lib/menu-core.sh"
 if [ ! -f "$MENU_CORE" ]; then
     echo "Error: Cannot find lib/menu-core.sh at $MENU_CORE"
     exit 1

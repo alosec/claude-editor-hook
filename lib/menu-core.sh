@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared menu logic for both claude-editor-hook and claude-editor-menu
+# Shared menu logic for both g-menu and claude-editor-menu
 # This ensures menu options and behavior stay in sync
 # Now supports context-aware menus: Claude session vs general tmux
 

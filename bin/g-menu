@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Debug logging
-LOG="/tmp/claude-editor-hook.log"
+LOG="/tmp/g-menu.log"
 echo "=== $(date) ===" >> "$LOG"
 echo "Args: $@" >> "$LOG"
 echo "TMUX: $TMUX" >> "$LOG"

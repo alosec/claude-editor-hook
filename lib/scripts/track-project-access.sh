@@ -21,7 +21,7 @@ PROJECT_PATH=$(cd "$PROJECT_PATH" && pwd)
 PROJECTS_DIR="$HOME/.claude/projects"
 
 # Convert current working directory to project directory format
-# /home/alex/code/claude-editor-hook -> -home-alex-code-claude-editor-hook
+# /home/alex/code/g-menu -> -home-alex-code-g-menu
 detect_project_dir() {
     local cwd="${1:-$PWD}"
     echo "$cwd" | tr '/' '-'

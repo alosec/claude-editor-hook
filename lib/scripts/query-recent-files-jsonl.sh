@@ -20,7 +20,7 @@ CACHE_KEY=$(echo "$PWD" | md5sum | cut -d' ' -f1)
 CACHE_FILE="$CACHE_DIR/recent-files-${CACHE_KEY}.json"
 
 # Detect project directory name in ~/.claude/projects
-# Converts /home/alex/code/claude-editor-hook -> -home-alex-code-claude-editor-hook
+# Converts /home/alex/code/g-menu -> -home-alex-code-g-menu
 detect_project_dir() {
     local cwd="${1:-$PWD}"
     # Replace slashes with dashes, which creates leading dash from root /

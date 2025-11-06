@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Claude Editor Hook - Installation Script
+# g-menu - Installation Script
 #
 # Installs the wrapper to ~/.local/bin and tracks deployment metadata
 
@@ -15,8 +15,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 INSTALL_DIR="$HOME/.local/bin"
-WRAPPER_NAME="claude-editor-hook"
-METADATA_FILE="$INSTALL_DIR/.claude-editor-hook-install.json"
+WRAPPER_NAME="g-menu"
+METADATA_FILE="$INSTALL_DIR/.g-menu-install.json"
 
 # Get the directory where this script lives (project root)
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,7 +41,7 @@ print_error() {
 print_header() {
     echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo -e "  ${BLUE}Claude Editor Hook - Installation${NC}"
+    echo -e "  ${BLUE}g-menu - Installation${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
 }
@@ -200,7 +200,7 @@ install_wrapper() {
     echo "   Add to ~/.bashrc: export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo
     echo "2. Set EDITOR environment variable"
-    echo "   Add to ~/.bashrc: export EDITOR=\"claude-editor-hook\""
+    echo "   Add to ~/.bashrc: export EDITOR=\"g-menu\""
     echo
     echo "3. Reload your shell"
     echo "   Run: source ~/.bashrc"
@@ -257,7 +257,7 @@ show_info() {
 # Uninstall
 uninstall() {
     print_header
-    print_info "Uninstalling claude-editor-hook..."
+    print_info "Uninstalling g-menu..."
 
     local wrapper_path="$INSTALL_DIR/$WRAPPER_NAME"
 
@@ -296,7 +296,7 @@ main() {
             echo "Usage: $0 {install|info|uninstall}"
             echo
             echo "Commands:"
-            echo "  install     Install claude-editor-hook (default)"
+            echo "  install     Install g-menu (default)"
             echo "  info        Show installation information"
             echo "  uninstall   Remove installation"
             exit 1

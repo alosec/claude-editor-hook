@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Debug logging
-LOG="/tmp/claude-editor-hook.log"
+LOG="/tmp/g-menu.log"
 echo "=== $(date) ===" >> "$LOG"
 echo "Args: $@" >> "$LOG"
 echo "TMUX: $TMUX" >> "$LOG"
@@ -13,13 +13,13 @@ FILE="$1"
 PATTERN="${EDITOR_HOOK_PATTERN:-1}"  # Default to 1, or env var if set
 
 # Check for project-level config first (takes precedence)
-if [ -f ".claude-editor-hook.conf" ]; then
-    source ".claude-editor-hook.conf"
-    echo "Loaded config from: .claude-editor-hook.conf" >> "$LOG"
+if [ -f ".g-menu.conf" ]; then
+    source ".g-menu.conf"
+    echo "Loaded config from: .g-menu.conf" >> "$LOG"
 # Then check for global config
-elif [ -f "$HOME/.claude-editor-hook.conf" ]; then
-    source "$HOME/.claude-editor-hook.conf"
-    echo "Loaded config from: ~/.claude-editor-hook.conf" >> "$LOG"
+elif [ -f "$HOME/.g-menu.conf" ]; then
+    source "$HOME/.g-menu.conf"
+    echo "Loaded config from: ~/.g-menu.conf" >> "$LOG"
 else
     echo "No config file found, using default or env var" >> "$LOG"
 fi
