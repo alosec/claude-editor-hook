@@ -3,6 +3,9 @@
 # This ensures menu options and behavior stay in sync
 # Now supports context-aware menus: Claude session vs general tmux
 
+# Project detection helpers
+has_package_json() { [ -f "package.json" ]; }
+
 # Usage: show_menu [file-path]
 # If file-path is provided, we're in Claude context
 # If omitted, we're in general tmux context
@@ -53,6 +56,13 @@ Enhance (Non-interactive):claude-enhance-auto
 Switch Project:switch-project
 Find Files:find-files
 Git Operations:git-operations"
+
+    # Context-aware build/deploy options
+    if has_package_json; then
+        MENU="${MENU}
+Build (npm):npm-build
+Deploy (Wrangler):wrangler-deploy"
+    fi
 
     if [ "$IN_CLAUDE_CONTEXT" = true ]; then
         MENU="${MENU}
@@ -314,6 +324,26 @@ Detach:detach"
         git-operations)
             # Git operations submenu
             bash "$SCRIPT_DIR/scripts/git-menu.sh"
+            ;;
+
+        npm-build)
+            # Run npm build with output display
+            echo "Running npm run build..."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            npm run build
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Build complete. Press Enter to continue..."
+            read
+            ;;
+
+        wrangler-deploy)
+            # Deploy with wrangler
+            echo "Deploying with Wrangler..."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            wrangler pages deploy dist/
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Deploy complete. Press Enter to continue..."
+            read
             ;;
 
         detach)
