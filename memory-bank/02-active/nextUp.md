@@ -1,21 +1,46 @@
 # Next Up: Prioritized Tasks
 
-**Updated**: 2025-11-03
+**Updated**: 2025-11-06
 
 ## Current State Summary
 
-Universal command palette is **working and accessible via CLI**. Recent additions:
-- ✅ CLI access via `menu` or `m` commands
-- ✅ Context-aware menu system
-- ✅ Project switcher (fuzzy ~/code)
-- ✅ File finder (fd with preview)
-- ✅ Git operations (status, log, branches)
+Persistent User session menu system is **working and ready for testing**. Latest architecture:
+- ✅ User session with dedicated menu window (window 0)
+- ✅ Hotkey `Ctrl-B Ctrl-G` jumps to menu from anywhere
+- ✅ Shell alias `u` for quick attach/create
+- ✅ Menu selections create/switch to named windows (no duplicates)
+- ✅ Claude session remains isolated
+- ✅ Project switcher, file finder, git ops, terminals all integrated
 
-**Next focus: Refine project switcher based on real usage.**
+**Next focus: Test the User session workflow and gather feedback.**
 
 ## Top Priorities
 
-### 1. Refine Project Switcher (Priority 1) 🔥
+### 1. Test User Session Menu System (Priority 0) 🔥🔥
+
+**Issue**: editor-hook-41 (closed - implementation complete)
+
+**Current state:** Implementation complete, ready for real-world testing.
+
+**Testing checklist:**
+- [ ] Run `u` to initialize User session
+- [ ] Verify menu appears in window 0
+- [ ] Test selecting "Projects" → creates project window
+- [ ] Test selecting "Terminal" → creates terminal-1, terminal-2, etc.
+- [ ] Test selecting "Git" → creates git window
+- [ ] From any window, press `Ctrl-B Ctrl-G` → jumps back to menu
+- [ ] Select same item twice → should switch to existing window (not create duplicate)
+- [ ] Detach and reattach with `u` → verify persistence
+- [ ] Verify Claude session (Ctrl-G in Claude Code) still works independently
+
+**Known limitations to document:**
+- Need to verify menu loop behavior on empty selection (Ctrl-C)
+- Need to test multi-project workflow (switching between different projects)
+- Need to verify batcat/emacs dependencies exist
+
+**Next step after testing:** Gather feedback and iterate on UX.
+
+### 2. Refine Project Switcher (Priority 1) 🔥
 
 **Issue**: editor-hook-38
 

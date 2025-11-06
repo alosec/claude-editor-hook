@@ -1,11 +1,30 @@
-# Current Work: Pattern Consolidation Cleanup
+# Current Work: Persistent User Session Menu System
 
 **Status**: ✅ COMPLETE
-**Date**: 2025-11-03
+**Date**: 2025-11-06
 
 ## This Session's Focus
 
-**Final Pattern Consolidation (Completed)**
+**Persistent User Session with Dedicated Menu Window (Completed)**
+
+Transformed the popup-based menu system into a persistent User session architecture. Menu now runs continuously in window 0, selections create or switch to named windows (projects, git, files, terminals). Hotkey `Ctrl-B Ctrl-G` jumps to menu from anywhere. Quick attach via `u` alias. Claude session remains isolated for Claude Code Ctrl-G workflow.
+
+**What We Shipped:**
+- ✅ `bin/init-user-session.sh` - Creates/attaches User session with menu window
+- ✅ `bin/menu-loop.sh` - Persistent FZF menu loop with window switching
+- ✅ `lib/scripts/switch-or-create-window.sh` - Core window management (reuse existing or create new)
+- ✅ `lib/scripts/focus-menu-pane.sh` - Hotkey handler to jump to menu
+- ✅ Tmux keybinding: `Ctrl-B Ctrl-G` → focus menu window
+- ✅ Shell alias: `u` → attach to User session
+- ✅ Symlinked scripts to `~/.local/bin/` for global access
+- ✅ Removed Alt-G binding (kept only Ctrl-B Ctrl-G)
+
+**Beads Issues:**
+- ✅ Closed editor-hook-41: Persistent User session implementation
+
+## Previous Session: Pattern Consolidation Cleanup
+
+**Final Pattern Consolidation (Nov 3)**
 
 After 4 days of real-world usage confirmed FZF menu as the definitive architecture, performed code cleanup to remove the 7 experimental patterns that were never used in practice. Simplified `bin/claude-editor-hook` from 258 lines to 52 lines, removed configuration complexity, and archived historical exploration docs.
 
