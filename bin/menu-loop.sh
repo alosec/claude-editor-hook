@@ -18,6 +18,7 @@ SWITCH_OR_CREATE="$SCRIPT_DIR/../lib/scripts/switch-or-create-window.sh"
 FIND_PROJECTS="$SCRIPT_DIR/../lib/scripts/find-projects.sh"
 FIND_FILES="$SCRIPT_DIR/../lib/scripts/find-files.sh"
 GIT_MENU="$SCRIPT_DIR/../lib/scripts/git-menu.sh"
+PREVIEW_PROJECT="$SCRIPT_DIR/../lib/scripts/preview-project-orientation.sh"
 
 # Build menu items
 # Format: "Display Label:window-name:action-type:action-data"
@@ -80,7 +81,8 @@ while true; do
                         --prompt='Project: ' \
                         --border \
                         --reverse \
-                        --preview='ls -la {} 2>/dev/null | head -20')
+                        --preview="bash '$PREVIEW_PROJECT' {}" \
+                        --preview-window=up:70%:wrap)
 
                     if [ -n "$selected_project" ]; then
                         # Create window named after project
