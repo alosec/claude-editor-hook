@@ -1,6 +1,8 @@
-# g-menu
+# claude-editor-hook
 
 > A command palette for Claude Code that intercepts `Ctrl-G` to launch editors, tools, and specialized agents.
+>
+> **Note:** Also available as `g-menu` for convenience.
 
 ## Current Status
 

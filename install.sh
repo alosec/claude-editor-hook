@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# g-menu - Installation Script
+# claude-editor-hook - Installation Script
 #
-# Installs the wrapper to ~/.local/bin and tracks deployment metadata
+# Installs all binaries and scripts to ~/.local/bin and tracks deployment metadata
 
 set -euo pipefail
 
@@ -15,11 +15,22 @@ NC='\033[0m' # No Color
 
 # Configuration
 INSTALL_DIR="$HOME/.local/bin"
-WRAPPER_NAME="g-menu"
-METADATA_FILE="$INSTALL_DIR/.g-menu-install.json"
+METADATA_FILE="$INSTALL_DIR/.claude-editor-hook-install.json"
 
 # Get the directory where this script lives (project root)
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define all files to install
+# Format: "source_path:symlink_name"
+declare -a INSTALL_TARGETS=(
+    "bin/claude-editor-hook:claude-editor-hook"
+    "bin/g-menu:g-menu"
+    "bin/claude-editor-menu:claude-editor-menu"
+    "bin/claude-editor-hook-menu:claude-editor-hook-menu"
+    "bin/init-user-session.sh:init-user-session"
+    "bin/tmux-command-palette:tmux-command-palette"
+    "lib/scripts/focus-menu-pane.sh:focus-menu-pane"
+)
 
 # Helper functions
 print_info() {
@@ -41,7 +52,7 @@ print_error() {
 print_header() {
     echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo -e "  ${BLUE}g-menu - Installation${NC}"
+    echo -e "  ${BLUE}claude-editor-hook - Installation${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
 }
@@ -164,30 +175,58 @@ install_wrapper() {
         mkdir -p "$INSTALL_DIR"
     fi
 
-    # Check if already installed
-    local wrapper_path="$INSTALL_DIR/$WRAPPER_NAME"
-    if [[ -L "$wrapper_path" ]]; then
-        print_info "Removing existing symlink..."
-        rm "$wrapper_path"
-    elif [[ -f "$wrapper_path" ]]; then
-        print_warning "Found existing file (not symlink), backing up..."
-        mv "$wrapper_path" "$wrapper_path.backup.$(date +%s)"
-    fi
+    # Install all targets
+    local installed_count=0
+    local failed_count=0
 
-    # Create symlink
-    print_info "Creating symlink: $wrapper_path -> $PROJECT_DIR/bin/$WRAPPER_NAME"
-    ln -s "$PROJECT_DIR/bin/$WRAPPER_NAME" "$wrapper_path"
+    echo
+    print_info "Installing symlinks..."
+    echo
+
+    for target in "${INSTALL_TARGETS[@]}"; do
+        local source_path="${target%%:*}"
+        local symlink_name="${target##*:}"
+        local full_source="$PROJECT_DIR/$source_path"
+        local symlink_path="$INSTALL_DIR/$symlink_name"
+
+        # Check if source exists
+        if [[ ! -f "$full_source" ]]; then
+            print_warning "Source not found: $source_path (skipping)"
+            failed_count=$((failed_count + 1))
+            continue
+        fi
+
+        # Remove existing symlink or file
+        if [[ -L "$symlink_path" ]]; then
+            rm "$symlink_path"
+        elif [[ -f "$symlink_path" ]]; then
+            print_warning "Found existing file (not symlink), backing up: $symlink_name"
+            mv "$symlink_path" "$symlink_path.backup.$(date +%s)"
+        fi
+
+        # Create symlink
+        ln -s "$full_source" "$symlink_path"
+
+        if [[ -L "$symlink_path" ]]; then
+            echo "  ✓ $symlink_name"
+            installed_count=$((installed_count + 1))
+        else
+            print_error "Failed to create: $symlink_name"
+            failed_count=$((failed_count + 1))
+        fi
+    done
+
+    echo
 
     # Create metadata file
     print_info "Writing installation metadata..."
-    create_metadata "$wrapper_path"
+    create_metadata "$INSTALL_DIR"
 
-    # Verify installation
-    if [[ -x "$wrapper_path" ]]; then
-        print_success "Installation complete!"
+    # Show results
+    if [[ $failed_count -eq 0 ]]; then
+        print_success "Installation complete! ($installed_count files installed)"
     else
-        print_error "Installation failed - wrapper not executable"
-        exit 1
+        print_warning "Installation completed with warnings ($installed_count installed, $failed_count failed)"
     fi
 
     # Show next steps
@@ -199,14 +238,14 @@ install_wrapper() {
     echo "1. Ensure ~/.local/bin is in your PATH"
     echo "   Add to ~/.bashrc: export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo
-    echo "2. Set EDITOR environment variable"
+    echo "2. Set EDITOR environment variable (optional)"
     echo "   Add to ~/.bashrc: export EDITOR=\"g-menu\""
     echo
     echo "3. Reload your shell"
     echo "   Run: source ~/.bashrc"
     echo
-    echo "4. Verify installation"
-    echo "   Run: $WRAPPER_NAME --version  (or check installation info)"
+    echo "4. Verify Ctrl-G keybinding works in tmux"
+    echo "   Press: Ctrl-B Ctrl-G"
     echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
@@ -257,24 +296,37 @@ show_info() {
 # Uninstall
 uninstall() {
     print_header
-    print_info "Uninstalling g-menu..."
+    print_info "Uninstalling claude-editor-hook..."
+    echo
 
-    local wrapper_path="$INSTALL_DIR/$WRAPPER_NAME"
+    local removed_count=0
 
-    if [[ -L "$wrapper_path" ]] || [[ -f "$wrapper_path" ]]; then
-        rm "$wrapper_path"
-        print_success "Removed: $wrapper_path"
-    else
-        print_warning "Wrapper not found at: $wrapper_path"
-    fi
+    # Remove all installed symlinks
+    for target in "${INSTALL_TARGETS[@]}"; do
+        local symlink_name="${target##*:}"
+        local symlink_path="$INSTALL_DIR/$symlink_name"
 
+        if [[ -L "$symlink_path" ]] || [[ -f "$symlink_path" ]]; then
+            rm "$symlink_path"
+            echo "  ✓ Removed: $symlink_name"
+            removed_count=$((removed_count + 1))
+        fi
+    done
+
+    # Remove metadata file
     if [[ -f "$METADATA_FILE" ]]; then
         rm "$METADATA_FILE"
-        print_success "Removed metadata file"
+        echo "  ✓ Removed metadata file"
+    fi
+
+    # Remove old g-menu metadata if exists
+    if [[ -f "$INSTALL_DIR/.g-menu-install.json" ]]; then
+        rm "$INSTALL_DIR/.g-menu-install.json"
+        echo "  ✓ Removed old g-menu metadata"
     fi
 
     echo
-    print_success "Uninstallation complete!"
+    print_success "Uninstallation complete! ($removed_count files removed)"
     echo
 }
 
@@ -296,7 +348,7 @@ main() {
             echo "Usage: $0 {install|info|uninstall}"
             echo
             echo "Commands:"
-            echo "  install     Install g-menu (default)"
+            echo "  install     Install claude-editor-hook binaries (default)"
             echo "  info        Show installation information"
             echo "  uninstall   Remove installation"
             exit 1
