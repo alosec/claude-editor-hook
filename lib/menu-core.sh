@@ -46,6 +46,7 @@ $display_label:terminal:$window_name"
         MENU="$MENU
 Create New Terminal:create-new-terminal
 Recent Files (Claude):recent-files
+Recent Conversations:recent-conversations
 Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto
 ──────────────────:separator"
@@ -205,6 +206,101 @@ Detach:detach"
                 fi
             fi
             rm -f /tmp/recent-files-error.$$
+            ;;
+
+        recent-conversations)
+            # Recent Conversations - query JSONL logs across all projects
+            local QUERY_SCRIPT="$SCRIPT_DIR/scripts/query-recent-conversations-jsonl.sh"
+
+            # Query conversations and format for FZF display
+            local TEMP_DISPLAY="/tmp/conversations-display-$$"
+            local TEMP_MAPPING="/tmp/conversations-mapping-$$"
+
+            > "$TEMP_DISPLAY"
+            > "$TEMP_MAPPING"
+
+            # Process each conversation: create display line and mapping
+            while IFS= read -r conversation_json; do
+                # Extract fields using jq
+                local project=$(echo "$conversation_json" | jq -r '.project')
+                local branch=$(echo "$conversation_json" | jq -r '.branch')
+                local summary=$(echo "$conversation_json" | jq -r '.summary')
+                local start_time=$(echo "$conversation_json" | jq -r '.startTime' | cut -d'T' -f1)
+                local file=$(echo "$conversation_json" | jq -r '.file')
+                local msg_count=$(echo "$conversation_json" | jq -r '.messageCount')
+
+                # Format display line: [date] [project] [branch] - summary
+                local display_line="[$start_time] [$project] [$branch] ($msg_count msgs) - ${summary:0:80}"
+
+                # Store mapping: display_line -> full JSON
+                echo "$display_line|$conversation_json" >> "$TEMP_MAPPING"
+                echo "$display_line" >> "$TEMP_DISPLAY"
+            done < <(bash "$QUERY_SCRIPT" 2>/tmp/conversations-error.$$)
+
+            # Show in FZF with preview
+            local selected=$(cat "$TEMP_DISPLAY" | fzf --height=100% --prompt='Recent Conversations: ' --border --reverse --preview="
+                # Extract JSON from mapping file
+                json=\$(grep -F '{}|' '$TEMP_MAPPING' | head -1 | cut -d'|' -f2-)
+                if [ -n \"\$json\" ]; then
+                    file=\$(echo \"\$json\" | jq -r '.file')
+                    echo '═══════════════════════════════════════════'
+                    echo 'Session Metadata'
+                    echo '═══════════════════════════════════════════'
+                    echo \"\$json\" | jq -r '
+                        \"Project: \" + .project,
+                        \"Branch: \" + .branch,
+                        \"Messages: \" + (.messageCount | tostring),
+                        \"Started: \" + .startTime,
+                        \"Ended: \" + .endTime,
+                        \"Summary: \" + .summary
+                    '
+                    echo ''
+                    echo '═══════════════════════════════════════════'
+                    echo 'Conversation Preview'
+                    echo '═══════════════════════════════════════════'
+                    # Show first 30 lines of conversation
+                    jq -r 'select(.type | IN(\"user\", \"assistant\")) |
+                        \"[\" + .timestamp + \"] \" +
+                        (if .type == \"user\" then \"👤 User\" else \"🤖 Claude\" end) +
+                        \": \" +
+                        (if .message.content | type == \"string\" then .message.content
+                         elif .message.content[0].type == \"text\" then .message.content[0].text
+                         else \"(\" + (.message.content[0].type // \"unknown\") + \")\"
+                         end |
+                        .[0:100] + (if length > 100 then \"...\" else \"\" end))' \"\$file\" | head -30
+                else
+                    echo 'Conversation details not found'
+                fi
+            " --preview-window=up:70%:wrap)
+
+            # Cleanup temp files
+            rm -f "$TEMP_DISPLAY" "$TEMP_MAPPING"
+
+            # Check for errors
+            if [ -s /tmp/conversations-error.$$ ]; then
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                cat /tmp/conversations-error.$$
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                read -p "Press Enter to continue..."
+            elif [ -n "$selected" ]; then
+                # Extract JSON for selected conversation
+                local selected_json=$(grep "^${selected}|" "$TEMP_MAPPING" | cut -d"|" -f2-)
+                local selected_file=$(echo "$selected_json" | jq -r '.file')
+
+                # Show full conversation
+                echo "═══════════════════════════════════════════"
+                echo "Full Conversation"
+                echo "═══════════════════════════════════════════"
+                jq -r 'select(.type | IN("user", "assistant")) |
+                    "[" + .timestamp + "] " +
+                    (if .type == "user" then "👤 User" else "🤖 Claude" end) +
+                    ": " +
+                    (if .message.content | type == "string" then .message.content
+                     elif .message.content[0].type == "text" then .message.content[0].text
+                     else "(" + (.message.content[0].type // "unknown") + ")"
+                     end)' "$selected_file" | less
+            fi
+            rm -f /tmp/conversations-error.$$
             ;;
 
         switch-project)
