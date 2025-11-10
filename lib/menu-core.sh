@@ -163,7 +163,7 @@ Detach:detach"
                 else
                     echo 'File path not found in mapping'
                 fi
-            " --preview-window=up:70%:wrap)
+            " --preview-window=up:90%:wrap)
 
             # Map truncated selection back to full path
             local selected_file=$(grep "^${selected_truncated}|" "$MAPPING_FILE" | cut -d"|" -f2)
@@ -271,7 +271,7 @@ Detach:detach"
                 else
                     echo 'Conversation details not found'
                 fi
-            " --preview-window=up:70%:wrap)
+            " --preview-window=up:90%:wrap)
 
             # Cleanup temp files
             rm -f "$TEMP_DISPLAY" "$TEMP_MAPPING"
@@ -362,7 +362,7 @@ Detach:detach"
                 --border \
                 --reverse \
                 --preview="$preview_cmd" \
-                --preview-window=up:70%:wrap)
+                --preview-window=up:90%:wrap)
 
             rm -f "$COMBINED_LIST"
 
@@ -400,7 +400,7 @@ Detach:detach"
         find-files)
             # File finder in current directory
             local FIND_FILES="$SCRIPT_DIR/scripts/find-files.sh"
-            local selected_file=$(bash "$FIND_FILES" | fzf --height=100% --prompt='Find File: ' --border --reverse --preview="batcat --color=always --style=numbers {}" --preview-window=up:70%:wrap)
+            local selected_file=$(bash "$FIND_FILES" | fzf --height=100% --prompt='Find File: ' --border --reverse --preview="batcat --color=always --style=numbers {}" --preview-window=up:90%:wrap)
 
             if [ -n "$selected_file" ]; then
                 # Offer choice: view or edit

@@ -38,7 +38,7 @@ case "$cmd" in
         git log --oneline --decorate --color=always | \
             fzf --ansi --no-sort --reverse --tiebreak=index \
                 --preview "echo {} | cut -d' ' -f1 | xargs -I@ git show --color=always @" \
-                --preview-window=up:70%:wrap
+                --preview-window=up:90%:wrap
         ;;
 
     git-branches)
@@ -47,7 +47,7 @@ case "$cmd" in
             grep -v '/HEAD\s' | \
             fzf --ansi --no-sort --reverse \
                 --preview "git log --oneline --graph --date=short --pretty='format:%C(auto)%cd %h%d %s' \$(echo {} | sed 's/^..//' | cut -d' ' -f1) | head -50" \
-                --preview-window=up:70%:wrap | \
+                --preview-window=up:90%:wrap | \
             sed 's/^..//' | cut -d' ' -f1 | \
             sed 's#remotes/[^/]*/##')
 

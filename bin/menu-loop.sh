@@ -82,7 +82,7 @@ while true; do
                         --border \
                         --reverse \
                         --preview="bash '$PREVIEW_PROJECT' {}" \
-                        --preview-window=up:70%:wrap)
+                        --preview-window=up:90%:wrap)
 
                     if [ -n "$selected_project" ]; then
                         # Create window named after project
