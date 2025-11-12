@@ -20,7 +20,8 @@ show_menu() {
     fi
 
     # Get script directory for finding helper scripts
-    local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Use CLAUDE_MENU_DIR if set (from claude-editor-menu), otherwise calculate from BASH_SOURCE
+    local SCRIPT_DIR="${CLAUDE_MENU_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
     # Build context-aware menu
     local MENU=""
@@ -45,7 +46,6 @@ $display_label:terminal:$window_name"
         # Add "Create New Terminal" option
         MENU="$MENU
 Create New Terminal:create-new-terminal
-Recent Files (Claude):recent-files
 Recent Conversations:recent-conversations
 Enhance (Interactive):claude-spawn-interactive
 Enhance (Non-interactive):claude-enhance-auto
@@ -54,6 +54,7 @@ Enhance (Non-interactive):claude-enhance-auto
 
     # General productivity options (always available)
     MENU="${MENU}
+Recent Files (Claude):recent-files
 Switch Project:switch-project
 Find Files:find-files
 Git Operations:git-operations"

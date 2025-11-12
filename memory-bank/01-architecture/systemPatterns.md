@@ -263,6 +263,62 @@ claude-editor-hook/
 └── README.md                     # User documentation
 ```
 
+## Context-Aware Menu Architecture
+
+**Overview:**
+The menu system detects whether it's running in Claude context (Ctrl-G hook) or general tmux context (CLI invocation) and adjusts available options accordingly.
+
+**Detection Logic:**
+```bash
+IN_CLAUDE_CONTEXT=false
+if [ -n "$FILE" ] || [ -n "$PROMPT" ]; then
+    IN_CLAUDE_CONTEXT=true
+fi
+```
+
+**Context-Specific Tools (Claude session only):**
+- Recent Conversations - Browse Claude's conversation history across projects
+- Enhancement Agents (Interactive/Non-interactive) - Spawn Claude subagents
+- Terminal management - Create/switch terminals with $PROMPT access
+- Detach - Return to Claude Code
+
+**Universal Tools (Available in both contexts):**
+- Recent Files (Claude) - View files Claude touched (useful for any development workflow)
+- Switch Project - Fuzzy search and jump to projects
+- Find Files - Recursive file search
+- Git Operations - Status, logs, branch switching
+- Build/Deploy - npm build, wrangler deploy (when package.json present)
+
+**Architectural Tension: When to Make Tools Universal?**
+
+The Recent Files feature exemplifies a key design question: should tools that read Claude's data be gated to Claude contexts or made universally available?
+
+**Decision Framework:**
+1. **Data source independence** - If the tool provides value regardless of current context, make it universal
+2. **Workflow integration** - Universal tools should enhance general development, not just Claude sessions
+3. **Clear naming** - Universal tools reading Claude data should clarify this (e.g., "Recent Files (Claude)")
+
+**Example: Recent Files → Universal**
+- Originally Claude-specific (only visible during Ctrl-G)
+- Now universal: accessible from any tmux session
+- Rationale: Knowing what Claude recently touched is useful when working outside Claude sessions
+- Naming: "Recent Files (Claude)" makes data source clear
+
+**Example: Recent Conversations → Stays Claude-specific**
+- Only visible during Ctrl-G
+- Rationale: Primarily useful when already in a Claude workflow
+- Less value in general tmux context
+
+**Example: Enhancement Agents → Stay Claude-specific**
+- Interactive/Non-interactive enhancement only visible in Claude context
+- Rationale: Tightly coupled to prompt enhancement workflow
+- Requires prompt file to operate
+
+**Benefits of this approach:**
+- Universal tools become "development history browsers" rather than "Claude session utilities"
+- Context-aware gating prevents menu clutter in non-Claude contexts
+- Clear naming prevents confusion about data sources
+
 ## Key Design Decisions
 
 **FZF Command Palette over YAML Orchestration:**
@@ -280,6 +336,11 @@ claude-editor-hook/
 - Single source of truth (`lib/menu-core.sh`)
 - Consistent behavior across entry points
 - Easy to extend with new options
+
+**Context-Aware vs Universal Tools:**
+- Tools reading Claude data can be made universal if they provide general development value
+- Clear naming indicates data source (e.g., "Recent Files (Claude)")
+- Decision based on workflow integration, not just data source
 
 **Simple Session Persistence:**
 - Always use session named "Claude"

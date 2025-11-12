@@ -38,8 +38,11 @@ source "$MENU_CORE"
 if [ -n "$TMUX" ]; then
     # Open menu in new tmux window within existing session
     # When the window closes, it automatically returns to the calling window
-    tmux new-window "source '$MENU_CORE' && show_menu '$FILE'"
+    # Export CLAUDE_MENU_DIR so menu-core.sh can find helper scripts (point to lib/ dir)
+    tmux new-window "export CLAUDE_MENU_DIR='$GMENU_DIR/../lib' && source '$MENU_CORE' && show_menu '$FILE'"
 else
     # Not in tmux, just show menu directly
+    # Export CLAUDE_MENU_DIR for consistency (point to lib/ dir)
+    export CLAUDE_MENU_DIR="$GMENU_DIR/../lib"
     show_menu "$FILE"
 fi

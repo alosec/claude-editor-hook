@@ -25,7 +25,8 @@ SESSION_NAME="Claude"
 
 # Menu command (reused for both new session and respawn)
 # Must source menu-core.sh inside the bash -c context
-MENU_CMD="source '$SCRIPT_DIR/../lib/menu-core.sh' && show_menu '$FILE'"
+# Export CLAUDE_MENU_DIR so menu-core.sh can find helper scripts (point to lib/ dir)
+MENU_CMD="export CLAUDE_MENU_DIR='$SCRIPT_DIR/../lib' && source '$SCRIPT_DIR/../lib/menu-core.sh' && show_menu '$FILE'"
 
 # Unset TMUX to allow nested sessions
 unset TMUX
